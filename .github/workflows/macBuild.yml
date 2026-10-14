@@ -1,0 +1,75 @@
+name: 小丹 AI短剧 Mac 安装包
+
+on:
+  push:
+    branches: [main, master, custom-xiaodan]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xiaodanMac-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Mac ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    env:
+      macCodesign: "0"
+      generateUpdatePatch: "0"
+      HUTCH_NO_UPDATE_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: 安装项目依赖
+        run: bun install --frozen-lockfile
+      - name: 安装 Intel Mac 兼容 SDK
+        if: matrix.arch == 'x64'
+        working-directory: compat/macIntel
+        run: bun install --frozen-lockfile
+      - name: 准备 M 系列 Mac SDK
+        if: matrix.arch == 'arm64'
+        run: node apps/desktop/node_modules/electrobun/bin/electrobun.cjs prepare
+      - name: 编译原生启动库
+        run: bun packages/startup/scripts/buildMac.ts
+      - name: 构建 Mac 安装包
+        run: bun run package:desktop
+      - name: 整理安装包并生成校验值
+        env:
+          targetArch: ${{ matrix.arch }}
+        run: |
+          mkdir -p build/macPackages
+          bun -e '
+          import { copyFileSync, readdirSync } from "@toonflow/file";
+          import { join } from "node:path";
+          const arch = process.env.targetArch;
+          const root = `build/desktop/artifacts/${arch === "arm64" ? "macArm64" : "macX64"}`;
+          const installers = readdirSync(root).filter(name => name.endsWith(".dmg"));
+          if (installers.length !== 1) throw new Error(`预期一个 DMG，实际找到 ${installers.length} 个`);
+          copyFileSync(join(root, installers[0]), `build/macPackages/xiaodan-ai-drama-macos-${arch}.dmg`);
+          '
+          hdiutil verify "build/macPackages/xiaodan-ai-drama-macos-${targetArch}.dmg"
+          cd build/macPackages
+          shasum -a 256 *.dmg > sha256.txt
+      - name: 上传安装包
+        uses: actions/upload-artifact@v7
+        with:
+          name: xiaodan-ai-drama-macos-${{ matrix.arch }}
+          path: build/macPackages/*
+          if-no-files-found: error
+          retention-days: 30
