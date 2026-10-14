@@ -1,0 +1,210 @@
+name: 小丹 AI短剧 Windows 与 Android 安装包
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - ".github/workflows/winAndroidBuild.yml"
+      - "apps/**"
+      - "packages/**"
+      - "electrobun.config.ts"
+      - "package.json"
+      - "bun.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xiaodanWinAndroid-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    name: Windows x64 构建与安装验证
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      generateUpdatePatch: "0"
+      HUTCH_NO_UPDATE_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: 安装依赖与准备 SDK
+        run: |
+          bun install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { throw '安装依赖失败' }
+          node apps/desktop/node_modules/electrobun/bin/electrobun.cjs prepare
+          if ($LASTEXITCODE -ne 0) { throw '准备桌面 SDK 失败' }
+      - name: 准备 NSIS
+        run: |
+          $nsis = 'C:/Program Files (x86)/NSIS/makensis.exe'
+          if (!(Test-Path $nsis)) {
+            choco install nsis --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw '安装 NSIS 失败' }
+          }
+          if (!(Test-Path $nsis)) { throw '找不到 NSIS' }
+          "NSIS_PATH=$nsis" >> $env:GITHUB_ENV
+      - name: 构建 Windows 安装包
+        run: |
+          bun run package:desktop
+          if ($LASTEXITCODE -ne 0) { throw 'Windows 打包失败' }
+      - name: 静默安装并验证启动与内置服务
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = Join-Path $PWD 'build/windowsPackages'
+          New-Item -ItemType Directory -Force $output | Out-Null
+          $installers = @(Get-ChildItem 'build/desktop/artifacts' -Filter '*-Setup.exe')
+          if ($installers.Count -ne 1) { throw '预期一个 Windows 安装包' }
+          $installer = $installers[0].FullName
+          $installDirectory = Join-Path $env:RUNNER_TEMP 'xiaodanInstalled'
+          $installation = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installDirectory") -Wait -PassThru
+          if ($installation.ExitCode -ne 0) { throw "静默安装失败：$($installation.ExitCode)" }
+          $resources = Join-Path $installDirectory 'app/Resources'
+          foreach ($relative in @('app/bin/launcher.exe', 'app/bin/bun.exe', 'app/Resources/app.ico', 'app/Resources/app/startupLauncher.exe', 'UninstallNSIS.exe')) {
+            if (!(Test-Path (Join-Path $installDirectory $relative))) { throw "缺少安装文件：$relative" }
+          }
+          $version = Get-Content (Join-Path $resources 'version.json') -Raw | ConvertFrom-Json
+          if ($version.identifier -ne 'local.xiaodan.aidrama.desktop') { throw '应用标识错误' }
+          $registry = Get-ItemProperty "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$($version.identifier).stable"
+          if ($registry.DisplayName -ne '小丹 AI短剧') { throw '系统安装名称错误' }
+          $env:TOONFLOW_DATA_DIR = Join-Path $env:RUNNER_TEMP 'xiaodanValidationData'
+          $bin = Join-Path $installDirectory 'app/bin'
+          $process = Start-Process -FilePath (Join-Path $bin 'launcher.exe') -WorkingDirectory $bin -PassThru -RedirectStandardOutput (Join-Path $output 'startup.stdout.log') -RedirectStandardError (Join-Path $output 'startup.stderr.log')
+          try {
+            $deadline = (Get-Date).AddSeconds(150)
+            $ready = $false
+            while ((Get-Date) -lt $deadline) {
+              $runtimeFile = Join-Path $resources 'desktopRuntime.json'
+              if (Test-Path $runtimeFile) {
+                try {
+                  $runtime = Get-Content $runtimeFile -Raw | ConvertFrom-Json
+                  Get-Process -Id $runtime.pid -ErrorAction Stop | Out-Null
+                  $origin = "http://127.0.0.1:$($runtime.port)"
+                  $headers = @{ 'x-toonflow-desktop' = '1'; 'x-toonflow-workspace' = '1' }
+                  $settings = Invoke-RestMethod "$origin/api/settings/get" -Headers $headers -TimeoutSec 5
+                  $page = Invoke-WebRequest "$origin/" -TimeoutSec 5
+                  if ($settings.code -eq 200 -and $page.Content.Contains('<title>小丹 AI短剧</title>')) { $ready = $true; break }
+                } catch { }
+              }
+              Start-Sleep -Seconds 2
+            }
+            if (!$ready) {
+              Get-Content (Join-Path $output 'startup.stderr.log') -ErrorAction SilentlyContinue
+              throw '应用启动或内置 HTTP 服务验证失败'
+            }
+            @('静默安装：通过', '应用名称和标识：通过', '启动文件与图标：通过', '应用进程：存活', '首页与设置接口：通过') | Set-Content (Join-Path $output 'validation.txt') -Encoding utf8
+          } finally {
+            & taskkill.exe /PID $process.Id /T /F 2>$null | Out-Null
+            $global:LASTEXITCODE = 0
+          }
+          $destination = Join-Path $output 'xiaodan-ai-drama-windows-x64-Setup.exe'
+          Copy-Item $installer $destination
+          $hash = (Get-FileHash $destination -Algorithm SHA256).Hash.ToLower()
+          "$hash  xiaodan-ai-drama-windows-x64-Setup.exe" | Set-Content (Join-Path $output 'sha256.txt') -Encoding utf8
+      - name: 上传 Windows 安装包与验证记录
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xiaodan-ai-drama-windows-x64
+          path: build/windowsPackages/*
+          if-no-files-found: warn
+          retention-days: 30
+
+  android:
+    name: Android ARM64 构建与 APK 验证
+    runs-on: windows-2025
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      androidRelease: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: 准备 JDK 与安装项目依赖
+        run: |
+          if (!(Test-Path "$env:JAVA_HOME_17_X64/bin/javac.exe")) { throw '找不到 JDK 17' }
+          "JAVA_HOME=$env:JAVA_HOME_17_X64" >> $env:GITHUB_ENV
+          if (!$env:ANDROID_HOME) { throw '找不到 Android SDK' }
+          bun install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { throw '安装依赖失败' }
+      - name: 准备 Android 运行库与构建依赖
+        run: |
+          bun run --cwd apps/mobile setup
+          if ($LASTEXITCODE -ne 0) { throw 'Android 构建环境准备失败' }
+      - name: 构建发布模式 APK
+        run: |
+          bun run --cwd apps/mobile build
+          if ($LASTEXITCODE -ne 0) { throw 'Android 打包失败' }
+      - name: 验证 APK 签名、名称、运行库与 Logo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = Join-Path $PWD 'build/androidPackages'
+          New-Item -ItemType Directory -Force $output | Out-Null
+          $apk = (Resolve-Path 'build/mobile/toonflowMobile.apk').Path
+          $java = Join-Path $env:JAVA_HOME 'bin/java.exe'
+          $signer = Join-Path $env:ANDROID_HOME 'build-tools/36.0.0/lib/apksigner.jar'
+          & $java -jar $signer verify --verbose --print-certs $apk | Tee-Object (Join-Path $output 'signature.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'APK 签名验证失败' }
+          $aapt = Join-Path $env:ANDROID_HOME 'build-tools/36.0.0/aapt2.exe'
+          $badging = & $aapt dump badging $apk
+          if ($LASTEXITCODE -ne 0) { throw '读取 APK 元数据失败' }
+          $badging | Set-Content (Join-Path $output 'metadata.txt') -Encoding utf8
+          $metadata = $badging -join "`n"
+          if (!$metadata.Contains("name='com.toonflow.mobile'")) { throw 'Android 包名错误' }
+          if (!$metadata.Contains("application-label:'小丹 AI短剧'")) { throw 'Android 应用名称错误' }
+          if (!$metadata.Contains("native-code: 'arm64-v8a'")) { throw 'Android 运行库架构错误' }
+          if ($metadata.Contains('application-debuggable')) { throw '发布 APK 不应启用调试' }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($apk)
+          function Read-Entry($entry) {
+            $stream = $entry.Open()
+            $memory = [System.IO.MemoryStream]::new()
+            try { $stream.CopyTo($memory); return ,$memory.ToArray() }
+            finally { $stream.Dispose(); $memory.Dispose() }
+          }
+          function Hash-Bytes([byte[]]$bytes) {
+            return [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
+          }
+          try {
+            foreach ($name in @('assets/payload/server.js', 'assets/payload/stdio.js', 'assets/payload/revision.txt', 'assets/payload/web/index.html', 'lib/arm64-v8a/libbun.so')) {
+              $entry = $archive.GetEntry($name)
+              if (!$entry -or !$entry.Length) { throw "APK 缺少 $name" }
+            }
+            $runtime = Read-Entry $archive.GetEntry('lib/arm64-v8a/libbun.so')
+            if ([Convert]::ToHexString($runtime[0..3]) -ne '7F454C46' -or [BitConverter]::ToUInt16($runtime, 18) -ne 183) { throw 'Bun 不是 ARM64 ELF' }
+            $sourceRuntime = [System.IO.File]::ReadAllBytes((Join-Path $PWD 'build/mobile/runtime/arm64-v8a/libbun.so'))
+            if ((Hash-Bytes $runtime) -ne (Hash-Bytes $sourceRuntime)) { throw 'APK 内运行库与校验源不一致' }
+            $logos = @($archive.Entries | Where-Object { $_.FullName -match '^assets/payload/web/assets/logo-.*\.png$' })
+            $sourceLogo = [System.IO.File]::ReadAllBytes((Join-Path $PWD 'packages/assets/logo.png'))
+            $logoMatches = @($logos | Where-Object { (Hash-Bytes (Read-Entry $_)) -eq (Hash-Bytes $sourceLogo) })
+            if (!$logoMatches.Count) { throw 'APK 未包含确认的 Logo' }
+            $html = [System.Text.Encoding]::UTF8.GetString((Read-Entry $archive.GetEntry('assets/payload/web/index.html')))
+            if (!$html.Contains('小丹 AI短剧')) { throw 'APK 前端名称错误' }
+          } finally { $archive.Dispose() }
+          '签名、发布模式、应用名称、ARM64 运行库、服务入口与 Logo 验证通过；未在 ARM64 手机运行。' | Set-Content (Join-Path $output 'validation.txt') -Encoding utf8
+          $destination = Join-Path $output 'xiaodan-ai-drama-android-arm64.apk'
+          Copy-Item $apk $destination
+          $hash = (Get-FileHash $destination -Algorithm SHA256).Hash.ToLower()
+          "$hash  xiaodan-ai-drama-android-arm64.apk" | Set-Content (Join-Path $output 'sha256.txt') -Encoding utf8
+      - name: 上传 Android APK 与验证记录
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xiaodan-ai-drama-android-arm64
+          path: build/androidPackages/*
+          if-no-files-found: warn
+          retention-days: 30

@@ -3,6 +3,17 @@ name: 小丹 AI短剧 Mac 安装包
 on:
   push:
     branches: [main, master, custom-xiaodan]
+    paths:
+      - "apps/web/**"
+      - "apps/server/**"
+      - "apps/desktop/src/**"
+      - "apps/desktop/scripts/build.ts"
+      - "apps/desktop/scripts/localizeMac.ts"
+      - "packages/**"
+      - "compat/macIntel/**"
+      - "electrobun.config.ts"
+      - "package.json"
+      - "bun.lock"
   workflow_dispatch:
 
 permissions:
