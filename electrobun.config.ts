@@ -4,7 +4,7 @@ const startupTarget = process.platform === "darwin" ? (process.arch === "x64" ? 
 
 export default {
   app: {
-    name: "小丹 AI短剧",
+    name: process.platform === "win32" ? "xiaodan" : "小丹 AI短剧",
     identifier: "local.xiaodan.aidrama.desktop",
     version: process.env.appVersion ?? "2.0.0",
     urlSchemes: ["toonflow"],
