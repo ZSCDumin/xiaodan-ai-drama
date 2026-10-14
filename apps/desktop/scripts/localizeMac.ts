@@ -17,8 +17,10 @@ if (process.env.ELECTROBUN_OS === "macos") {
   if (!/<\/dict>\s*<\/plist>\s*$/.test(plist)) throw new Error(`不支持的 Info.plist 格式：${plistPath}`);
   const bundleName = plist.match(/<key>CFBundleName<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
   if (!bundleName) throw new Error(`无法读取应用名称：${plistPath}`);
+  const displayName = "小丹 AI短剧";
 
   for (const [key, value] of [
+    ["CFBundleDisplayName", `<string>${displayName}</string>`],
     ["CFBundleDevelopmentRegion", "<string>zh-Hans</string>"],
     ["CFBundleLocalizations", "<array><string>zh-Hans</string></array>"],
   ]) {
@@ -34,6 +36,6 @@ if (process.env.ELECTROBUN_OS === "macos") {
   const resourceDir = join(bundlePath, "Contents", "Resources", "zh-Hans.lproj");
   mkdirSync(resourceDir, { recursive: true });
   writeFileSync(join(resourceDir, "InfoPlist.strings"),
-    `CFBundleName = ${JSON.stringify(bundleName)};\nCFBundleDisplayName = ${JSON.stringify(bundleName)};\n`);
+    `CFBundleName = ${JSON.stringify(displayName)};\nCFBundleDisplayName = ${JSON.stringify(displayName)};\n`);
   console.log(`已设置 macOS 简体中文本地化：${bundlePath}`);
 }

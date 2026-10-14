@@ -2,7 +2,7 @@ import type { ElectrobunConfig } from "electrobun";
 import shared from "./generated/config.json";
 
 export default {
-  app: shared.app,
+  app: { ...shared.app, name: "xiaodan" },
   build: {
     // ACT: 与主桌面构建一致，保留 Photon、anydoc 原包及其相邻 WASM/原生文件。
     bun: { entrypoint: "generated/src/index.ts", minify: true, external: ["@silvia-odwyer/photon-node", "@firecrawl/anydoc", "@firecrawl/anydoc-wasm"] },
