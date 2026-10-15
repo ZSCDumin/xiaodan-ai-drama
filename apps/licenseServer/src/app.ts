@@ -13,19 +13,26 @@ export function createApp(store: LicenseStore) {
   const app = express();
   app.disable("x-powered-by");
   app.disable("etag");
+  // 公网部署时经反向代理访问，Host 是自有域名；不配置就仍然只接受本机。
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "[::1]",
+    ...(process.env.XIAODAN_LICENSE_PUBLIC_HOSTS ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean)]);
+  // 反向代理后面所有请求的来源地址都是代理本身，只有显式信任代理时才按 X-Forwarded-For 分桶。
+  const trustProxy = process.env.XIAODAN_LICENSE_TRUST_PROXY === "1";
+  const clientAddress = (req: { headers: Record<string, unknown>; socket: { remoteAddress?: string } }) =>
+    trustProxy ? String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || "unknown" : req.socket.remoteAddress ?? "unknown";
   const attempts = new Map<string, { count: number; until: number }>();
   app.use((req, res, next) => {
     res.set("Cache-Control", "no-store");
     let hostname = "";
     try { hostname = new URL(`http://${req.headers.host ?? ""}`).hostname; } catch {}
-    if (!["localhost", "127.0.0.1", "[::1]"].includes(hostname) || req.headers.origin) {
+    if (!allowedHosts.has(hostname) || req.headers.origin) {
       res.status(403).json({ code: 403, data: null, message: "不允许的请求来源" });
       return;
     }
-    if (req.method === "POST" && !/^\/v1\/payments\/(wechat|alipay)\/notify$/.test(req.path)) {
+    if (req.method === "POST" && !/^\/v1\/payments\/mall\/notify$/.test(req.path)) {
       const now = Date.now();
       for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
-      const address = req.socket.remoteAddress ?? "unknown";
+      const address = clientAddress(req);
       let bucket = attempts.get(address);
       if (!bucket) {
         if (attempts.size >= 10000) { res.status(503).end(); return; }
@@ -41,9 +48,8 @@ export function createApp(store: LicenseStore) {
   });
   const callbackBodies = new WeakMap<object, string>();
   app.use(express.json({ limit: "16kb", strict: true, verify(req, _res, body) {
-    if (req.url === "/v1/payments/wechat/notify") callbackBodies.set(req, body.toString("utf8"));
+    if (req.url === "/v1/payments/mall/notify") callbackBodies.set(req, body.toString("utf8"));
   } }));
-  app.use("/v1/payments/alipay/notify", express.urlencoded({ extended: false, limit: "16kb", parameterLimit: 100 }));
   registerKeyRoutes(app, store, createKeyShop(store), callbackBodies);
   app.get("/health", (_req, res) => res.json({ code: 200, data: { status: "ok" }, message: "成功" }));
   app.get("/v1/publicKey", (_req, res) => res.json({ code: 200, data: { keyId: store.keyId, publicKey: store.publicPem }, message: "成功" }));

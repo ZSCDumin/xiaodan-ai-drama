@@ -15,7 +15,21 @@ bun run --cwd apps/licenseServer start
 
 环境变量 `XIAODAN_LICENSE_DATA_DIR` 可指定绝对数据目录，`XIAODAN_LICENSE_PORT` 可指定端口。管理命令和服务必须使用同一目录。`bun run --cwd apps/licenseServer build` 输出 `build/licenseServer/index.js`，部署时应显式设置数据目录。
 
-当前只监听本机，校验本机 Host，并拒绝浏览器 Origin，供应用后端调用。未来公网部署还需 HTTPS、Host/来源策略和代理限流配置。
+## 公网部署
+
+APP 的本地服务在客户机器上运行，因此授权服务必须能从公网 HTTPS 访问。当前线上部署：
+
+| 项 | 值 |
+| --- | --- |
+| 公网地址 | `https://www.xiaodukeji.online/license`（nginx 转发到 `127.0.0.1:8092`，并剥掉 `/license` 前缀） |
+| systemd 单元 | `xiaodan-license.service`，专用系统用户 `xdlicense` |
+| 数据目录 | `/var/lib/xiaodan-license`（0700，私钥与数据库 0600） |
+| 配置文件 | `/etc/xiaodan-license.env`（0600，含商城共享密钥） |
+| 密钥目录 | `/etc/xiaodan-license/`（`partner.key` 合作方共享密钥、`encryption.key` Key 交付加密密钥） |
+
+反向代理部署新增两个环境变量：`XIAODAN_LICENSE_PUBLIC_HOSTS`（允许的 Host，英文逗号分隔）和
+`XIAODAN_LICENSE_TRUST_PROXY=1`（按 `X-Forwarded-For` 而不是代理地址做限流分桶；不设置时
+所有请求会被算作同一个来源，30 次/分钟的限流会误伤全部用户）。仍拒绝带浏览器 Origin 的请求。
 
 ## 管理
 
@@ -45,6 +59,11 @@ bun run --cwd apps/licenseServer manage publicKey
 | POST /v1/activate | `{ code, deviceId, deviceSecret }` → 签名租约 |
 | POST /v1/refresh | `{ deviceId, deviceSecret }` → 签名租约 |
 | POST /v1/deactivate | `{ deviceId, deviceSecret }` → 释放名额 |
+| POST /v1/keyShop/status | `{ deviceId, deviceSecret }` → 套餐目录、可用收款渠道与订单列表 |
+| POST /v1/keyShop/order | `{ requestId, channel, packageId, credentials }` → 订单与商城支付地址 |
+| POST /v1/keyShop/orderStatus | `{ orderId, credentials }` → 主动查单后的订单状态 |
+| POST /v1/keyShop/reveal | `{ orderId, credentials }` → 已交付的 API Key 明文 |
+| POST /v1/payments/mall/notify | 商城支付成功回调；HMAC 验签后核销订单 |
 
 deviceId 是客户端安装时生成并持久化的 UUID；deviceSecret 是安全随机 32 字节的 base64url 字符串（43 个字符），应存入系统密钥库。不要使用固定示例值或硬件序列号。相同 ID 与密钥重复激活不额外占名额，只有 ID 不能覆盖已有设备。服务器只保存密钥哈希。
 
@@ -72,7 +91,9 @@ signingPrivate.pem 只放授权服务器，禁止提交仓库、打入桌面/APK
 
 临时目录中的真实 HTTP 调用已验证激活、重复激活、设备上限、错误凭证、刷新、非法输入、签名与篡改、续期及撤销后拒绝刷新。类型检查与构建通过。
 
-2.0.3 已接入 APP 软件授权面板、客户端验签和 AI 创作入口校验。尚未实现支付回调、用户自助账户或公网部署，未完成正式生产验收，因此还不是可以直接售卖的完整订阅产品。
+2.0.3 已接入 APP 软件授权面板、客户端验签和 AI 创作入口校验。2.0.4 已完成公网部署，并把
+API Key 套餐收款改为调用「小丹科研AI商城」的合作方支付接口（详见 docs/keyShopIntegration.md）。
+用户自助账户、退款与上游 Key 自动续充仍未实现，未完成正式生产验收，因此还不是可以直接售卖的完整订阅产品。
 
 APP 的固定服务地址与公钥位于 apps/server/src/utils/license/config.ts，当前只用于本机联调。正式部署时需改为自有 HTTPS 服务与相应公钥后重新构建；不能让用户在页面替换信任根。客户端设备凭证目前与应用私有配置一同保存在权限为 0600 的文件中，尚未接入系统密钥库，是商用发布前的剩余工作。
 

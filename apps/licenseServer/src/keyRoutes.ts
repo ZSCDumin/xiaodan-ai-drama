@@ -5,7 +5,7 @@ import type { LicenseStore } from "./store";
 import { authenticate } from "./auth";
 import { catalog, publicOrder, saleChannels } from "./keyShop";
 import type { createKeyShop } from "./keyShop";
-import { alipayNotification, createPayment, queryPayment, wechatNotification } from "./payments";
+import { createPayment, mallNotification, queryPayment } from "./payments";
 
 const ownedSchema = z.strictObject({ credentials: credentialsSchema, orderId: z.string().regex(/^[a-f0-9]{32}$/) });
 export function registerKeyRoutes(app: Express, store: LicenseStore, shop: ReturnType<typeof createKeyShop>, callbackBodies: WeakMap<object, string>) {
@@ -18,8 +18,14 @@ export function registerKeyRoutes(app: Express, store: LicenseStore, shop: Retur
     const license = authenticate(store, input.credentials);
     if (!saleChannels()[input.channel]) throw Object.assign(new Error("套餐购买尚未开放，请联系管理员"), { status: 503 });
     const order = shop.order(license.id, input.requestId, input.packageId, input.channel);
-    const checkout = order.state === "pending" ? await createPayment(order) : {};
-    res.json({ code: 200, data: { ...publicOrder(order), ...checkout, orderId: order.id }, message: "成功" });
+    // 商城可能已经收款但回调丢失，下单时若发现已付款就直接按已付款处理。
+    let checkout: Record<string, unknown> = {};
+    if (order.state === "pending") {
+      const payment = await createPayment(order);
+      if (payment.paid) shop.paid({ orderId: order.id, channel: payment.channel, tradeId: payment.tradeNo, amountFen: payment.amountFen });
+      else checkout = payment;
+    }
+    res.json({ code: 200, data: { ...publicOrder(shop.get(order.id, license.id)), ...checkout, orderId: order.id }, message: "成功" });
   });
   app.post("/v1/keyShop/orderStatus", async (req, res) => {
     const input = ownedSchema.parse(req.body), license = authenticate(store, input.credentials, false);
@@ -31,15 +37,10 @@ export function registerKeyRoutes(app: Express, store: LicenseStore, shop: Retur
     const input = ownedSchema.parse(req.body), license = authenticate(store, input.credentials, false);
     res.json({ code: 200, data: shop.reveal(input.orderId, license.id), message: "成功" });
   });
-  app.post("/v1/payments/wechat/notify", (req, res) => {
+  app.post("/v1/payments/mall/notify", (req, res) => {
     const raw = callbackBodies.get(req);
-    if (!raw) { res.status(400).end(); return; }
-    shop.paid(wechatNotification(raw, { get: name => req.get(name) ?? null }));
-    res.status(204).end();
-  });
-  app.post("/v1/payments/alipay/notify", (req, res) => {
-    const paid = alipayNotification(req.body);
-    if (paid) shop.paid(paid);
-    res.type("text/plain").send("success");
+    if (!raw) { res.status(400).json({ code: 400, data: null, message: "请求体缺失" }); return; }
+    shop.paid(mallNotification(raw, { get: name => req.get(name) ?? null }));
+    res.json({ code: 200, data: null, message: "成功" });
   });
 }

@@ -1,108 +1,127 @@
-import { AlipaySdk } from "alipay-sdk";
-import { createDecipheriv, createPrivateKey, createPublicKey, randomBytes, sign, verify } from "node:crypto";
-import { readFileSync } from "@toonflow/file";
+// 收款不再直连微信／支付宝官方商户，改为调用「小丹AI漫剧商城」的合作方支付接口。
+// 商城负责七相PAY 下单、验签与收款，支付成功后再签名回调本服务标记订单已付款。
+// 本服务只保存自己的订单，不接触商户私钥，也不需要微信/支付宝的 APIv3 密钥。
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import type { KeyOrder } from "./keyShop";
 
 export type PaymentChannel = "wechat" | "alipay";
-const paymentSchema = z.object({ out_trade_no: z.string().regex(/^[a-f0-9]{32}$/), transaction_id: z.string().min(1), trade_state: z.string(), mchid: z.string(), appid: z.string(), amount: z.object({ total: z.number().int().positive(), currency: z.literal("CNY") }) });
-const fields = {
-  wechat: ["WECHAT_APP_ID", "WECHAT_MCH_ID", "WECHAT_MCH_SERIAL", "WECHAT_PRIVATE_KEY_PATH", "WECHAT_PAY_PUBLIC_KEY_ID", "WECHAT_PAY_PUBLIC_KEY_PATH", "WECHAT_API_V3_KEY"],
-  alipay: ["ALIPAY_APP_ID", "ALIPAY_SELLER_ID", "ALIPAY_PRIVATE_KEY_PATH", "ALIPAY_PUBLIC_KEY_PATH"],
-};
+const TIMESTAMP_HEADER = "x-xd-timestamp";
+const NONCE_HEADER = "x-xd-nonce";
+const SIGNATURE_HEADER = "x-xd-signature";
+const SIGNATURE_WINDOW_MS = 5 * 60 * 1000;
+
+const orderSchema = z.object({
+  outTradeNo: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  status: z.enum(["unpaid", "paid", "failed", "expired"]),
+  amountCents: z.number().int().positive().max(10000000),
+  channel: z.enum(["wechat", "alipay"]),
+  tradeNo: z.string().max(128).nullable().optional(),
+  payUrl: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  paidAt: z.string().nullable(),
+});
+const callbackSchema = z.strictObject({
+  outTradeNo: z.string().regex(/^[a-f0-9]{32}$/),
+  channel: z.enum(["wechat", "alipay"]),
+  tradeNo: z.string().min(1).max(128),
+  amountCents: z.number().int().positive().max(10000000),
+  status: z.literal("paid"),
+  timestamp: z.number().int().positive(),
+});
+
+function readConfig() {
+  const base = String(process.env.XIAODAN_MALL_BASE_URL ?? "").trim().replace(/\/$/, "");
+  const partnerKey = String(process.env.XIAODAN_MALL_PARTNER_KEY ?? "").trim();
+  const publicUrl = String(process.env.XIAODAN_PAYMENT_PUBLIC_URL ?? "").trim().replace(/\/$/, "");
+  return { base, partnerKey, publicUrl };
+}
+// 商城与本服务之间必须 HTTPS；只在同机联调时允许回环 HTTP。
+function transportValid(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.username || url.password || url.search || url.hash) return false;
+    if (url.protocol === "https:") return true;
+    return url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  } catch { return false; }
+}
+function requireConfig() {
+  const config = readConfig();
+  if (!transportValid(config.base) || !transportValid(config.publicUrl) || config.partnerKey.length < 32)
+    throw Object.assign(new Error("充值渠道尚未开通，请联系管理员"), { status: 503 });
+  return config;
+}
 export function paymentChannels() {
-  let publicUrl = false;
-  try { const url = new URL(process.env.XIAODAN_PAYMENT_PUBLIC_URL ?? ""); publicUrl = url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash; } catch {}
-  function configured(channel: PaymentChannel) {
-    if (!publicUrl || !fields[channel].every(key => !!process.env[key])) return false;
-    try {
-      const prefix = channel === "wechat" ? "WECHAT" : "ALIPAY";
-      const privateKey = createPrivateKey(readFileSync(process.env[`${prefix}_PRIVATE_KEY_PATH`]!, "utf8"));
-      const publicKey = createPublicKey(readFileSync(process.env[channel === "wechat" ? "WECHAT_PAY_PUBLIC_KEY_PATH" : "ALIPAY_PUBLIC_KEY_PATH"]!, "utf8"));
-      return privateKey.asymmetricKeyType === "rsa" && publicKey.asymmetricKeyType === "rsa" && (channel !== "wechat" || Buffer.byteLength(process.env.WECHAT_API_V3_KEY!) === 32);
-    } catch { return false; }
-  }
-  return { wechat: configured("wechat"), alipay: configured("alipay") };
+  try { requireConfig(); return { wechat: true, alipay: true }; }
+  catch { return { wechat: false, alipay: false }; }
 }
-function requireChannel(channel: PaymentChannel) {
-  if (!paymentChannels()[channel]) throw Object.assign(new Error("充值渠道尚未开通，请联系管理员"), { status: 503 });
+const canonical = (timestamp: string, nonce: string, rawBody: string) => `${timestamp}\n${nonce}\n${rawBody}`;
+function sign(secret: string, timestamp: string, nonce: string, rawBody: string) {
+  return createHmac("sha256", secret).update(canonical(timestamp, nonce, rawBody), "utf8").digest("hex");
 }
-function notifyUrl(channel: PaymentChannel) { return `${process.env.XIAODAN_PAYMENT_PUBLIC_URL!.replace(/\/$/, "")}/v1/payments/${channel}/notify`; }
-function alipay() {
-  requireChannel("alipay");
-  return new AlipaySdk({ appId: process.env.ALIPAY_APP_ID!, privateKey: readFileSync(process.env.ALIPAY_PRIVATE_KEY_PATH!, "utf8"),
-    alipayPublicKey: readFileSync(process.env.ALIPAY_PUBLIC_KEY_PATH!, "utf8"), keyType: "PKCS8", timeout: 10000 });
+function signatureMatches(secret: string, timestamp: string, nonce: string, rawBody: string, provided: string) {
+  const received = String(provided).toLowerCase(), expected = sign(secret, timestamp, nonce, rawBody);
+  return received.length === expected.length && timingSafeEqual(Buffer.from(received), Buffer.from(expected));
 }
-function amountYuan(fen: number) { return `${Math.floor(fen / 100)}.${String(fen % 100).padStart(2, "0")}`; }
-function parseFen(value: unknown) {
-  const amount = z.string().regex(/^\d{1,8}(\.\d{1,2})?$/).parse(value);
-  const [integer, decimals = ""] = amount.split(".");
-  return Number(integer) * 100 + Number(decimals.padEnd(2, "0"));
+function notifyUrl() { return `${readConfig().publicUrl}/v1/payments/mall/notify`; }
+
+async function mallRequest(path: string, payload: unknown) {
+  const { base, partnerKey } = requireConfig();
+  const raw = JSON.stringify(payload);
+  const timestamp = String(Date.now()), nonce = randomBytes(16).toString("hex");
+  const response = await fetch(`${base}/api/partner/payments${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-XD-Timestamp": timestamp, "X-XD-Nonce": nonce, "X-XD-Signature": sign(partnerKey, timestamp, nonce, raw) },
+    body: raw, redirect: "error", signal: AbortSignal.timeout(15000),
+  });
+  const reader = response.body?.getReader();
+  if (!reader) throw Object.assign(new Error("支付服务响应为空"), { status: 502 });
+  let size = 0;
+  const chunks: Uint8Array[] = [];
+  try {
+    while (true) {
+      const item = await reader.read();
+      if (item.done) break;
+      size += item.value.length;
+      if (size > 32000) throw Object.assign(new Error("支付服务响应过大"), { status: 502 });
+      chunks.push(item.value);
+    }
+  } finally { await reader.cancel().catch(() => {}); }
+  let result: { code?: number; data?: unknown; error?: string };
+  try { result = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw Object.assign(new Error("支付服务返回格式不正确"), { status: 502 }); }
+  if (!response.ok) throw Object.assign(new Error(result.error === "签名无效" ? "支付服务拒绝了本次请求，请联系管理员" : "支付服务暂时无法处理订单，请稍后重试"), { status: 502 });
+  return orderSchema.parse(result);
 }
-function verifyWechat(raw: string, headers: { get(name: string): string | null }) {
-  requireChannel("wechat");
-  const timestamp = headers.get("wechatpay-timestamp"), nonce = headers.get("wechatpay-nonce"), signature = headers.get("wechatpay-signature");
-  if (!timestamp || !/^\d{10}$/.test(timestamp) || !nonce || !signature
-    || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300
-    || headers.get("wechatpay-serial") !== process.env.WECHAT_PAY_PUBLIC_KEY_ID
-    || !verify("RSA-SHA256", Buffer.from(`${timestamp}\n${nonce}\n${raw}\n`), readFileSync(process.env.WECHAT_PAY_PUBLIC_KEY_PATH!, "utf8"), Buffer.from(signature, "base64"))) throw Object.assign(new Error("支付签名无效"), { status: 403 });
-}
-async function wechat(method: "POST" | "GET", path: string, body?: unknown) {
-  requireChannel("wechat");
-  const raw = body === undefined ? "" : JSON.stringify(body);
-  const timestamp = String(Math.floor(Date.now() / 1000)), nonce = randomBytes(16).toString("hex");
-  const signature = sign("RSA-SHA256", Buffer.from(`${method}\n${path}\n${timestamp}\n${nonce}\n${raw}\n`), readFileSync(process.env.WECHAT_PRIVATE_KEY_PATH!, "utf8")).toString("base64");
-  const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${process.env.WECHAT_MCH_ID}",nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${process.env.WECHAT_MCH_SERIAL}",signature="${signature}"`;
-  const response = await fetch(`https://api.mch.weixin.qq.com${path}`, { method, headers: { Authorization: authorization, Accept: "application/json", "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: raw }), redirect: "error", signal: AbortSignal.timeout(10000) });
-  const text = await response.text();
-  if (text.length > 100000) throw new Error("支付响应过大");
-  verifyWechat(text, response.headers);
-  if (!response.ok) throw Object.assign(new Error("支付平台暂时无法处理订单，请稍后重试"), { status: 502 });
-  return JSON.parse(text);
-}
+
 export async function createPayment(order: KeyOrder) {
-  const description = "小丹AI漫剧 API 额度购买";
-  let qrCode: string;
-  if (order.channel === "wechat") {
-    const response = await wechat("POST", "/v3/pay/transactions/native", { appid: process.env.WECHAT_APP_ID, mchid: process.env.WECHAT_MCH_ID, description, out_trade_no: order.id, notify_url: notifyUrl("wechat"), amount: { total: order.amountFen, currency: "CNY" } });
-    qrCode = z.string().startsWith("weixin://wxpay/").parse(response.code_url);
-  } else {
-    const response = await alipay().curl<{ qr_code: string }>("POST", "/v3/alipay/trade/precreate", { body: { out_trade_no: order.id, total_amount: amountYuan(order.amountFen), subject: description, notify_url: notifyUrl("alipay") } });
-    qrCode = z.string().url().parse(response.data.qr_code);
-    if (new URL(qrCode).protocol !== "https:") throw new Error("支付链接无效");
-  }
-  return { orderId: order.id, channel: order.channel, amountFen: order.amountFen, qrCode };
+  const result = await mallRequest("", { outTradeNo: order.id, channel: order.channel, amountCents: order.amountFen, subject: "小丹AI漫剧 API 额度购买", notifyUrl: notifyUrl() });
+  if (result.amountCents !== order.amountFen || result.channel !== order.channel) throw Object.assign(new Error("支付订单信息不匹配"), { status: 502 });
+  if (result.status === "paid") return { orderId: order.id, channel: order.channel, amountFen: order.amountFen, qrCode: null, paid: true as const, tradeNo: result.tradeNo || order.id };
+  if (result.status === "expired") throw Object.assign(new Error("支付订单已过期，请重新下单"), { status: 409 });
+  if (!result.payUrl) throw Object.assign(new Error("支付下单未返回支付地址，请稍后重试"), { status: 502 });
+  return { orderId: order.id, channel: order.channel, amountFen: order.amountFen, qrCode: result.payUrl, paid: false as const };
 }
-export function wechatNotification(raw: string, headers: { get(name: string): string | null }) {
-  verifyWechat(raw, headers);
-  const event = z.object({ event_type: z.literal("TRANSACTION.SUCCESS"), resource: z.object({ algorithm: z.literal("AEAD_AES_256_GCM"), original_type: z.literal("transaction"), nonce: z.string(), associated_data: z.string().optional(), ciphertext: z.string() }) }).parse(JSON.parse(raw));
-  const key = Buffer.from(process.env.WECHAT_API_V3_KEY!, "utf8");
-  if (key.length !== 32) throw new Error("微信 APIv3 密钥长度错误");
-  const encrypted = Buffer.from(event.resource.ciphertext, "base64");
-  const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(event.resource.nonce));
-  decipher.setAuthTag(encrypted.subarray(-16));
-  decipher.setAAD(Buffer.from(event.resource.associated_data ?? ""));
-  return wechatCredit(JSON.parse(Buffer.concat([decipher.update(encrypted.subarray(0, -16)), decipher.final()]).toString("utf8")));
-}
-function wechatCredit(value: unknown) {
-  const data = paymentSchema.parse(value);
-  if (data.mchid !== process.env.WECHAT_MCH_ID || data.appid !== process.env.WECHAT_APP_ID || data.trade_state !== "SUCCESS") throw new Error("支付商户或状态不匹配");
-  return { orderId: data.out_trade_no, channel: "wechat", tradeId: data.transaction_id, amountFen: data.amount.total };
-}
-export function alipayNotification(body: unknown) {
-  const values = z.record(z.string(), z.string()).parse(body);
-  if (values.sign_type !== "RSA2" || !alipay().checkNotifySignV2(values) || values.app_id !== process.env.ALIPAY_APP_ID || values.seller_id !== process.env.ALIPAY_SELLER_ID) throw Object.assign(new Error("支付签名或商户无效"), { status: 403 });
-  if (!["TRADE_SUCCESS", "TRADE_FINISHED"].includes(values.trade_status)) return null;
-  return { orderId: z.string().regex(/^[a-f0-9]{32}$/).parse(values.out_trade_no), channel: "alipay", tradeId: z.string().min(1).parse(values.trade_no), amountFen: parseFen(values.total_amount) };
-}
+
 export async function queryPayment(order: KeyOrder) {
-  if (order.channel === "wechat") {
-    const result = await wechat("GET", `/v3/pay/transactions/out-trade-no/${order.id}?mchid=${encodeURIComponent(process.env.WECHAT_MCH_ID!)}`);
-    return result.trade_state === "SUCCESS" ? wechatCredit(result) : null;
-  }
-  const response = await alipay().curl<Record<string, unknown>>("POST", "/v3/alipay/trade/query", { body: { out_trade_no: order.id } });
-  const data = response.data;
-  if (!["TRADE_SUCCESS", "TRADE_FINISHED"].includes(String(data.trade_status))) return null;
-  if (data.out_trade_no !== order.id || data.seller_id !== process.env.ALIPAY_SELLER_ID) throw new Error("支付查询商户不匹配");
-  return { orderId: order.id, channel: "alipay", tradeId: z.string().min(1).parse(data.trade_no), amountFen: parseFen(data.total_amount) };
+  const result = await mallRequest("/query", { outTradeNo: order.id });
+  if (result.status !== "paid") return null;
+  if (result.amountCents !== order.amountFen || result.channel !== order.channel) throw Object.assign(new Error("支付查询结果与本地订单不一致"), { status: 502 });
+  return { orderId: order.id, channel: order.channel, tradeId: result.tradeNo || order.id, amountFen: result.amountCents };
+}
+
+// 支付回调：与商城共用同一套 HMAC 签名与时间窗，随机串在窗口内不可重复。
+const seenCallbacks = new Map<string, number>();
+export function mallNotification(raw: string, headers: { get(name: string): string | null }) {
+  const { partnerKey } = requireConfig();
+  const timestamp = headers.get(TIMESTAMP_HEADER) ?? "", nonce = headers.get(NONCE_HEADER) ?? "", provided = headers.get(SIGNATURE_HEADER) ?? "";
+  const invalid = () => Object.assign(new Error("支付回调签名无效"), { status: 403 });
+  if (!/^\d{13}$/.test(timestamp) || Math.abs(Date.now() - Number(timestamp)) > SIGNATURE_WINDOW_MS) throw invalid();
+  if (!/^[a-f0-9]{16,64}$/i.test(nonce)) throw invalid();
+  if (!signatureMatches(partnerKey, timestamp, nonce, raw, provided)) throw invalid();
+  const now = Date.now();
+  for (const [key, until] of seenCallbacks) if (until <= now) seenCallbacks.delete(key);
+  if (seenCallbacks.has(nonce) || seenCallbacks.size >= 10000) throw invalid();
+  seenCallbacks.set(nonce, now + SIGNATURE_WINDOW_MS);
+  const data = callbackSchema.parse(JSON.parse(raw));
+  return { orderId: data.outTradeNo, channel: data.channel, tradeId: data.tradeNo, amountFen: data.amountCents };
 }
