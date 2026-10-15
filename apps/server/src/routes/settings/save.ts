@@ -21,8 +21,7 @@ export default router.put("/", validateFields({ settings: z.record(z.string(), z
   const { settings } = req.body;
   u.removeLegacySettings(settings);
   u.cleanNodeMenuSettings(settings);
-  const previousSettings = u.conf.get("settings", {});
   u.conf.set("settings", settings);
-  const [models] = await Promise.all([u.ai.refreshProviderModels(previousSettings), u.mcpRuntime.reloadMcpRuntime()]);
-  res.json(success({ ...models, nodeMenu: u.conf.get("settings.general.nodeMenu") ?? null }, "设置已保存"));
+  await u.mcpRuntime.reloadMcpRuntime();
+  res.json(success({ nodeMenu: u.conf.get("settings.general.nodeMenu") ?? null }, "设置已保存"));
 });

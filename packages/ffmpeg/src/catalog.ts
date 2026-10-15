@@ -9,7 +9,7 @@ export const downloadSources = [
   },
   {
     id: "github",
-    label: "GitHub 上游",
+    label: "官方直连",
     description: "ffmpeg-static 项目发布的预编译程序",
     available: true,
     homepage: "https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1",
@@ -18,7 +18,7 @@ export const downloadSources = [
   {
     id: "ghProxy",
     label: "GH-Proxy 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://gh-proxy.org/",
     urlPrefix: "https://gh-proxy.org/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",
@@ -26,7 +26,7 @@ export const downloadSources = [
   {
     id: "ghFast",
     label: "GHFast 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://ghfast.top/",
     urlPrefix: "https://ghfast.top/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",
@@ -34,7 +34,7 @@ export const downloadSources = [
   {
     id: "ghProxyNet",
     label: "GHProxy.net 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://ghproxy.net/",
     urlPrefix: "https://ghproxy.net/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",
@@ -42,7 +42,7 @@ export const downloadSources = [
   {
     id: "ghJasonZeng",
     label: "JasonZeng 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://gh.jasonzeng.dev/",
     urlPrefix: "https://gh.jasonzeng.dev/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",
@@ -50,7 +50,7 @@ export const downloadSources = [
   {
     id: "ghGeekertao",
     label: "Geekertao 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://gh.dpik.top/",
     urlPrefix: "https://gh.dpik.top/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",
@@ -58,7 +58,7 @@ export const downloadSources = [
   {
     id: "ghLlkk",
     label: "LLKK 加速",
-    description: "第三方 GitHub 加速渠道，下载后会验证文件完整性",
+    description: "第三方加速下载渠道，下载后会验证文件完整性",
     available: true,
     homepage: "https://gh.llkk.cc/",
     urlPrefix: "https://gh.llkk.cc/https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/",

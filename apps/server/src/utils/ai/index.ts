@@ -15,7 +15,6 @@ import { getReadableFileMimeType } from "@/lib/documentFormats";
 import { readDocument } from "@/utils/documents";
 
 export { fetchProviderModels } from "@/utils/ai/models";
-export { refreshProviderModels } from "@/utils/ai/initialize";
 
 export const providerSchema = z.object({
   apiUrl: z.url({ protocol: /^https?$/ }),

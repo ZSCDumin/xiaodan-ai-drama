@@ -1,0 +1,280 @@
+{
+  "registry": "https://registry.npmjs.org",
+  "scope": "当前锁文件中的依赖版本匹配；包含开发依赖，未完成全部运行时可达性验证。",
+  "initialFindings": [
+    {
+      "name": "@modelcontextprotocol/client",
+      "version": "2.0.0",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server",
+      "range": ">=2.0.0 <2.2.0",
+      "url": "https://github.com/advisories/GHSA-6qxp-vccf-f47h"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "range": "<1.1.19",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "range": "<1.1.21",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "range": "<1.1.20",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "range": ">=4.0.0 <5.0.11",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "range": ">=4.0.0 <5.0.10",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "range": ">=4.0.0 <5.0.12",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+    },
+    {
+      "name": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+      "range": "<=3.0.3",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+    },
+    {
+      "name": "decode-uri-component",
+      "version": "0.2.2",
+      "severity": "moderate",
+      "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
+      "range": "<=0.4.2",
+      "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.4.15",
+      "severity": "low",
+      "title": "DOMPurify: IN_PLACE: node-removing afterSanitize hook leaves detached subtree event handlers armed, causing DOM XSS",
+      "range": ">=3.4.13 <=3.4.15",
+      "url": "https://github.com/advisories/GHSA-p98j-92pf-mc4p"
+    },
+    {
+      "name": "dompurify",
+      "version": "3.4.15",
+      "severity": "low",
+      "title": "DOMPurify: IN_PLACE returns a force-removed rawtext root whose text carries attacker markup — pure HTML reparse executes",
+      "range": "<=3.4.15",
+      "url": "https://github.com/advisories/GHSA-6688-9rhm-gjv2"
+    },
+    {
+      "name": "fast-uri",
+      "version": "3.1.7",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets",
+      "range": ">=3.0.0 <3.1.8",
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj"
+    },
+    {
+      "name": "katex",
+      "version": "0.16.47",
+      "severity": "low",
+      "title": "KaTeX: Existing prototype pollution can bypass trust restrictions",
+      "range": ">=0.11.0 <0.18.2",
+      "url": "https://github.com/advisories/GHSA-238p-pmpm-9mq7"
+    },
+    {
+      "name": "proxy-addr",
+      "version": "2.0.7",
+      "severity": "critical",
+      "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+      "range": ">=1.1.0 <2.0.8",
+      "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h"
+    },
+    {
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "severity": "high",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "range": ">=1.0.0 <1.2.2",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via unhandled error in WebSocket permessage-deflate decompression",
+      "range": ">=8.1.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-3wwx-pv8p-q78v"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via orphaned RetryHandler response body",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "low",
+      "title": "undici vulnerable to downstream response splitting via retry interceptor",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "high",
+      "title": "undici vulnerable to Denial of Service via unrequested WebSocket subprotocol",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via unbounded decompression of compressed responses",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "moderate",
+      "title": "undici vulnerable to cross-user cookie disclosure via Set-Cookie caching in shared caches",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "low",
+      "title": "undici vulnerable to response truncation via oversized chunked responses in the dump interceptor",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-2gqq-gqf2-x968"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "high",
+      "title": "undici vulnerable to TLS certificate validation bypass via dropped connect options in BalancedPool",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-w293-vg96-wgc3"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "low",
+      "title": "undici vulnerable to caching and replay of unsafe HTTP method responses",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-8436-99hf-9mmv"
+    },
+    {
+      "name": "undici",
+      "version": "8.9.0",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via WebSocketStream unclean close",
+      "range": ">=8.0.0 <8.10.2",
+      "url": "https://github.com/advisories/GHSA-rx4f-c7p8-82vq"
+    }
+  ],
+  "findings": [
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "range": "<1.1.19",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "range": "<1.1.21",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "1.1.18",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "range": "<1.1.20",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "range": ">=4.0.0 <5.0.11",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "range": ">=4.0.0 <5.0.10",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p"
+    },
+    {
+      "name": "brace-expansion",
+      "version": "5.0.9",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "range": ">=4.0.0 <5.0.12",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+    },
+    {
+      "name": "braces",
+      "version": "3.0.3",
+      "severity": "high",
+      "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+      "range": "<=3.0.3",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+    },
+    {
+      "name": "decode-uri-component",
+      "version": "0.2.2",
+      "severity": "moderate",
+      "title": "decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input",
+      "range": "<=0.4.2",
+      "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr"
+    },
+    {
+      "name": "katex",
+      "version": "0.16.47",
+      "severity": "low",
+      "title": "KaTeX: Existing prototype pollution can bypass trust restrictions",
+      "range": ">=0.11.0 <0.18.2",
+      "url": "https://github.com/advisories/GHSA-238p-pmpm-9mq7"
+    }
+  ]
+}

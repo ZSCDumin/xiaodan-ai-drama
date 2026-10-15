@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { createServer } from "node:http";
 import { createApp } from "./app";
 import config from "../../../electrobun.config";
 
@@ -22,7 +23,17 @@ const app = await createApp({
 });
 const { initializeMcpRuntime } = await import("./utils/mcp/runtime");
 const { startMobileLinkRuntime } = await import("./utils/mobileLink");
-app.listen(realPort, async () => {
+// ACT: 独立服务不公开未鉴权的主端口；Host 白名单阻止浏览器 DNS 重绑定。
+const server = createServer((request, response) => {
+  let hostname = "";
+  try { hostname = new URL(`http://${request.headers.host ?? ""}`).hostname; } catch {}
+  if (!["127.0.0.1", "localhost", "[::1]"].includes(hostname)) {
+    response.writeHead(403).end();
+    return;
+  }
+  app(request, response);
+});
+server.listen(realPort, "127.0.0.1", async () => {
   await initializeMcpRuntime(app, `http://127.0.0.1:${realPort}`, resolve(appDirectory, fromSource ? "packages/mcp/src/stdio.ts" : "build/mcp/stdio.js"));
   await startMobileLinkRuntime(app).catch(error => console.error("设备互联启动失败：", error));
   console.log(`[服务启动成功]: http://localhost:${realPort}`);

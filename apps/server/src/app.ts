@@ -10,11 +10,11 @@ import { errorFromCause } from "@/lib/responseFormat";
 import desktopRequest from "@/lib/desktop";
 import { getRuntimePlatform } from "@/lib/platform";
 import initializePlugins from "@/utils/plugins/initialize";
-import migrateSkillBrand from "@/lib/brandMigration";
+import migrateSkillBrand, { retireLegacyProvider } from "@/lib/brandMigration";
 import { languageRequest, resolveRequestLocale, runWithLocale, setLocaleFallback, translateError, translateMessage } from "@/lib/i18n";
 import { detectLocale, normalizeLocale } from "@toonflow/i18n";
 
-const autoInstallProviders = ["tfRouter.ts", "apiMart.ts", "metaso.ts", "compshare.ts"];
+const autoInstallProviders = ["apiMart.ts", "metaso.ts", "compshare.ts"];
 
 export async function createApp({
   webRoot,
@@ -51,6 +51,7 @@ export async function createApp({
     const { default: initializeExt } = await import("@/utils/plugins/initializeExt");
     await initializeExt(resolve(dataDirectory, "ext"), extRoot, pluginRevision);
   }
+  if (dataDirectory) await retireLegacyProvider(dataDirectory);
   // ACT: 内置媒体供应商随构建同步，其他供应商文件和独立保存的配置保留。
   if (dataDirectory && providersRoot) {
     const sourceDirectory = resolve(providersRoot, "media");
@@ -82,7 +83,21 @@ export async function createApp({
     await buildRoute();
     app.use(logger("dev"));
   }
-  app.use(cors());
+  // ACT: 主服务仅接受同源浏览器调用；设备共享使用独立的令牌鉴权入口。
+  app.use((request, response, next) => {
+    const origin = request.headers.origin;
+    const host = request.headers.host;
+    if (origin && origin !== `http://${host}` && origin !== `https://${host}`) {
+      response.status(403).end();
+      return;
+    }
+    next();
+  });
+  app.use(cors((request, callback) => {
+    const origin = request.headers.origin;
+    const host = request.headers.host;
+    callback(null, { origin: origin === `http://${host}` || origin === `https://${host}` });
+  }));
   app.use(languageRequest);
   app.use("/a2a", express.json({ limit: "2mb" }));
   app.use(["/api/workspaces/files/write", "/api/assets/save"], express.raw({ type: "application/octet-stream", limit: "100mb" }));
@@ -90,8 +105,6 @@ export async function createApp({
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
   app.use("/api/desktop", desktopRequest);
 
-  const { default: initializeProviderModels } = await import("@/utils/ai/initialize");
-  await initializeProviderModels();
   const router = await import("@/router");
   router.default(app);
   const [{ createMcpRouter }, { getMcpTools }, { authorizeMcp }, { skillResources }] = await Promise.all([

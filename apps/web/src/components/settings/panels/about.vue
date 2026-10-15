@@ -1,587 +1,72 @@
 <template>
   <div class="about">
     <div class="brand">
-      <div class="brandMark"><img class="brandLogo" :src="logoUrl" alt="小丹AI漫剧图标" /></div>
-      <div class="brandInfo">
+      <img class="brandLogo" :src="logoUrl" alt="小丹AI漫剧图标" />
+      <div>
         <h3>小丹AI漫剧</h3>
-        <div class="brandMeta">
-          <span v-if="currentVersion">v{{ currentVersion }}</span>
-          <el-tag v-if="clientBuild?.channel || snapshot?.channel" type="info" size="small" round>{{ clientBuild?.channel || snapshot?.channel }}</el-tag>
-        </div>
-        <p class="brandDescription">从故事灵感到分镜、角色与成片，在一个创作空间里完成。</p>
+        <p>v{{ currentVersion }}</p>
+        <p>从故事灵感到分镜、角色与成片，在一个创作空间里完成。</p>
       </div>
     </div>
-
-    <el-card v-if="isMobile || !isRemoteConnection" class="infoCard updateCard" shadow="never">
-      <div class="cardHeader">
-        <div class="updateCopy">
-          <div class="cardLabel">
-            <icon-refresh :size="18" aria-hidden="true" />
-            <span>版本更新</span>
-          </div>
-        </div>
-        <div class="updateActions">
-          <el-button v-if="isMobile" tag="a" size="small" type="primary" plain :href="`${repositoryUrl}/releases/latest`" target="_blank" rel="noopener noreferrer">
-            前往 GitHub 更新
-          </el-button>
-          <template v-else>
-            <el-select :modelValue="updateSource" aria-label="更新源" size="small" :disabled="working || sourceSaving" @change="saveUpdateSource">
-              <template #prefix>
-                <icon-brand-github v-if="updateSource === 'github'" :size="14" aria-hidden="true" />
-                <icon-world v-else :size="14" aria-hidden="true" />
-              </template>
-              <el-option label="官方源" value="official" />
-              <el-option label="GitHub" value="github" />
-              <el-option v-if="customUpdateUrl" label="自定义源" value="custom" />
-            </el-select>
-            <el-badge isDot :hidden="!hasDesktopUpdate">
-              <el-button size="small" type="primary" plain :loading="checking" :disabled="sourceSaving" @click="openUpdate">
-                {{ snapshot?.installFailure ? "查看更新失败原因" : snapshot?.updateReady ? "更新已就绪" : snapshot?.updating || action === "download" ? "查看更新进度" : "检查更新" }}
-              </el-button>
-            </el-badge>
-          </template>
-        </div>
+    <el-card v-if="isDesktop && !isRemoteConnection" shadow="never">
+      <div class="updateHeader">
+        <strong>版本更新</strong>
+        <el-button size="small" type="primary" plain :loading="working" @click="update">
+          {{ snapshot?.updateReady ? "重启并更新" : snapshot?.updateAvailable ? "下载更新" : "检查更新" }}
+        </el-button>
       </div>
-      <div v-if="!isMobile && snapshot?.hash" class="buildInfo">
-        <span>构建标识</span>
-        <code>{{ snapshot.hash }}</code>
-      </div>
-      <div v-if="!isMobile && snapshot?.installFailure" class="installFailureNotice" role="alert">
-        <strong>上次更新未成功</strong>
-        <p>{{ snapshot.installFailure.message }}</p>
-        <p>请前往 GitHub 最新发布页，选择适合当前系统的完整安装包，关闭客户端后重新安装。</p>
-        <el-button tag="a" type="primary" size="small" :href="snapshot.installFailure.downloadUrl" target="_blank" rel="noopener noreferrer">前往下载页</el-button>
-      </div>
+      <el-progress v-if="snapshot?.updating" :percentage="progress" />
+      <p v-if="status" role="status">{{ status }}</p>
     </el-card>
-
-    <el-card class="infoCard repositoryCard" shadow="never">
-      <a class="repositoryLink" :href="repositoryUrl" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库：ZSCDumin/xiaodan-ai-drama">
-        <icon-brand-github class="repositoryIcon" :size="22" aria-hidden="true" />
-        <div class="repositoryInfo">
-          <span class="repositoryTitle">GitHub 仓库</span>
-        </div>
-        <icon-external-link class="externalIcon" :size="16" aria-hidden="true" />
-      </a>
-    </el-card>
-
-    <el-card class="infoCard" shadow="never">
+    <el-card shadow="never">
       <p>© {{ new Date().getFullYear() }} ZSCDumin · 小丹AI漫剧品牌与定制部分。</p>
-      <p><el-link :href="`${repositoryUrl}/issues`" target="_blank" rel="noopener noreferrer" type="primary">问题反馈</el-link></p>
-      <details class="licenseNotice">
+      <details>
         <summary>开源许可与版权声明</summary>
-        <p>本软件基于 Toonflow 开源项目定制。原项目 Copyright © 2026 HBAI-Ltd，采用 MIT 许可；小丹AI漫剧的品牌设计及定制修改由 ZSCDumin 提供。</p>
-        <el-link :href="`${repositoryUrl}/blob/main/LICENSE`" target="_blank" rel="noopener noreferrer" type="primary">查看完整许可</el-link>
+        <p>本产品保留第三方组件的许可与原作者署名。</p>
+        <pre class="licenseText">{{ licenseText }}</pre>
       </details>
     </el-card>
-
-    <el-dialog v-model="resultVisible" title="版本更新" width="min(480px, 92vw)" alignCenter appendToBody>
-      <div class="updateResult" aria-live="polite" :aria-busy="working">
-        <div class="resultHeader">
-          <span class="resultIcon" :class="{ warning: !!updateError, success: !working && !updateError && !snapshot?.updateAvailable }">
-            <icon-refresh v-if="working" class="loadingIcon" :size="22" aria-hidden="true" />
-            <icon-alert-circle v-else-if="updateError" :size="22" aria-hidden="true" />
-            <icon-arrow-up-circle v-else-if="snapshot?.updateAvailable" :size="22" aria-hidden="true" />
-            <icon-circle-check v-else :size="22" aria-hidden="true" />
-          </span>
-          <div class="resultCopy">
-            <h3>{{ resultTitle }}</h3>
-            <p>{{ resultMessage }}</p>
-          </div>
-        </div>
-        <div
-          v-if="!updateError && !snapshot?.installFailure && (action === 'download' || updateProgress || (snapshot?.updateReady && !updateInProgress))"
-          class="updateProgress">
-          <div v-if="updateInProgress" class="progressHeader">
-            <span>{{ updateProgress?.phase === "preparing" ? "正在解压并校验更新包" : "下载进度" }}</span>
-            <span v-if="updateProgress && (updateProgress.received > 0 || updateProgress.total)">
-              {{ formatBytes(updateProgress.received) }}<template v-if="updateProgress.total"> / {{ formatBytes(updateProgress.total) }}</template>
-            </span>
-          </div>
-          <el-progress
-            v-if="updateProgress?.total || (!updateInProgress && snapshot?.updateReady)"
-            :percentage="updatePercentage"
-            :status="!updateInProgress && snapshot?.updateReady ? 'success' : undefined" />
-        </div>
-        <div v-if="!checking && !updateError && snapshot?.updateAvailable" class="releaseInfo">
-          <div class="versionComparison">
-            <div class="versionItem">
-              <span>当前版本</span>
-              <strong>v{{ currentVersion }}</strong>
-            </div>
-            <icon-arrow-right class="versionArrow" :size="18" aria-hidden="true" />
-            <div class="versionItem latestVersion">
-              <span>最新版本</span>
-              <strong>v{{ snapshot.latestVersion }}</strong>
-            </div>
-          </div>
-          <div v-if="snapshot.channel || snapshot.latestHash" class="releaseMeta">
-            <el-tag v-if="snapshot.channel" type="info" size="small" round>{{ snapshot.channel }}</el-tag>
-            <code v-if="snapshot.latestHash" :title="snapshot.latestHash">{{ snapshot.latestHash }}</code>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <el-button size="small" @click="resultVisible = false">关闭</el-button>
-        <el-button v-if="updateError && !snapshot?.installFailure && !updateInProgress" tag="a" size="small" :href="`${repositoryUrl}/releases/latest`" target="_blank" rel="noopener noreferrer">前往下载页</el-button>
-        <el-button v-if="snapshot?.installFailure" tag="a" type="primary" size="small" :href="snapshot.installFailure.downloadUrl" target="_blank" rel="noopener noreferrer">前往下载页</el-button>
-        <el-button v-else-if="snapshot?.updating && !working" size="small" type="primary" @click="runUpdate('read')">重新读取状态</el-button>
-        <el-button
-          v-else-if="snapshot?.canUpdate && snapshot.updateAvailable"
-          size="small"
-          :type="snapshot.updateReady ? 'danger' : 'primary'"
-          :loading="working"
-          @click="runUpdate(snapshot.updateReady ? 'apply' : 'download')">
-          {{ snapshot.updateReady ? "重启并更新" : "下载更新" }}
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { translate, t } from "@toonflow/i18n/vue";
-
-import { computed, onMounted, onBeforeUnmount, ref } from "vue";
-import axios from "axios";
-import { ElMessage } from "element-plus";
-import { isMobile, isDesktop, isRemoteConnection } from "@/lib/platform";
-import {
-  IconRefresh,
-  IconBrandGithub,
-  IconExternalLink,
-  IconAlertCircle,
-  IconArrowUpCircle,
-  IconCircleCheck,
-  IconArrowRight,
-  IconWorld,
-} from "@tabler/icons-vue";
+import { computed, onMounted, ref } from "vue";
 import logoUrl from "@toonflow/assets/logo.png";
-import { saveSettings } from "@/stores/settings";
-import {
-  desktopUpdateSource as updateSource,
-  desktopUpdateCustomUrl as customUpdateUrl,
-  desktopUpdateSnapshot as snapshot,
-  desktopUpdateError as updateError,
-  desktopUpdateAction as action,
-  desktopUpdateChecking,
-  hasDesktopUpdate,
-  runDesktopUpdate,
-} from "@/stores/desktopUpdate";
+import licenseText from "@toonflow/assets/projectLicense.txt?raw";
+import { isDesktop, isRemoteConnection } from "@/lib/platform";
+import { desktopUpdateSnapshot as snapshot, desktopUpdateAction, runDesktopUpdate } from "@/stores/desktopUpdate";
 
-const repositoryUrl = "https://github.com/ZSCDumin/xiaodan-ai-drama";
-const clientBuild = ref<{ version: string; channel: string }>();
-const currentVersion = computed(() => isDesktop && isRemoteConnection
-  ? clientBuild.value?.version || "" : snapshot.value?.version || import.meta.env.appVersion);
-const sourceSaving = ref(false);
-const checking = computed(() => desktopUpdateChecking.value);
-const working = computed(() => !!action.value);
-const updateInProgress = computed(() => working.value || !!snapshot.value?.updating);
-const updateProgress = computed(() => snapshot.value?.updateProgress);
-const updatePercentage = computed(() => !updateInProgress.value && snapshot.value?.updateReady ? 100
-  : updateProgress.value?.total ? Math.min(100, Math.floor(updateProgress.value.received / updateProgress.value.total * 100)) : 0);
-const resultVisible = ref(false);
-const controller = new AbortController();
-const resultTitle = computed(() => {
-  if (snapshot.value?.installFailure) return translate("上次更新未成功");
-  if (updateError.value) return translate("更新未完成");
-  if (checking.value) return translate("正在检查更新");
-  if (action.value === "read") return translate("正在读取更新状态");
-  if (action.value === "apply") return translate("正在重启并更新");
-  if (working.value) return translate("正在准备更新");
-  if (snapshot.value?.updateReady) return translate("更新已准备完成");
-  return snapshot.value?.updateAvailable ? translate("发现新版本") : translate("暂无更新");
-});
-const resultMessage = computed(() => {
-  if (snapshot.value?.installFailure) return snapshot.value.installFailure.message;
-  if (updateError.value) return updateError.value;
-  if (checking.value) return translate("正在获取最新版本信息…");
-  if (action.value === "read") return translate("正在确认客户端的更新状态，请稍候…");
-  if (action.value === "apply") return translate("客户端即将关闭，更新完成后会自动重新打开。");
-  if (working.value) return translate("正在下载并校验更新包，可以关闭此弹窗继续使用。");
-  if (snapshot.value?.updateReady) return translate("点击“重启并更新”安装新版本，请先完成正在进行的任务。");
-  if (!snapshot.value?.updateAvailable) return t`当前已是最新版本 v${currentVersion.value}`;
-  return snapshot.value.canUpdate ? translate("有新的版本可用，下载完成后可重启更新。") : translate("当前客户端不支持应用内更新，请下载安装包。");
+const currentVersion = computed(() => snapshot.value?.version || import.meta.env.appVersion);
+const working = computed(() => !!desktopUpdateAction.value);
+const status = ref("");
+const progress = computed(() => {
+  const value = snapshot.value?.updateProgress;
+  return value?.total ? Math.min(100, Math.floor(value.received / value.total * 100)) : 0;
 });
 
-onMounted(async () => {
-  if (!isDesktop) return;
+onMounted(() => {
+  if (isDesktop && !isRemoteConnection) void runDesktopUpdate("read").catch(() => {});
+});
+
+async function update() {
+  if (working.value) return;
+  status.value = "";
   try {
-    if (isRemoteConnection) {
-      const { data } = await axios.get<{ data: { version: string; channel: string } }>("/api/desktop/update", { signal: controller.signal, timeout: 10000 });
-      clientBuild.value = data.data;
-      return;
-    }
-    await runDesktopUpdate("read");
+    await runDesktopUpdate(snapshot.value?.updateReady ? "apply" : snapshot.value?.updateAvailable ? "download" : "check");
+    status.value = snapshot.value?.updateReady ? "更新已准备完成" : snapshot.value?.updateAvailable ? "发现新版本" : "当前已是最新版本";
   } catch {
-    // ACT: 本机版本读取失败不阻塞关于页；远程页面的构建版本不冒充客户端版本。
-  }
-});
-onBeforeUnmount(() => controller.abort());
-
-function openUpdate() {
-  resultVisible.value = true;
-  if (working.value || snapshot.value?.updateReady || snapshot.value?.installFailure) return;
-  void runUpdate("check");
-}
-
-async function saveUpdateSource(source: string) {
-  if (isRemoteConnection) return;
-  if (source === updateSource.value || sourceSaving.value || working.value) return;
-  if (source !== "official" && source !== "github" && (source !== "custom" || !customUpdateUrl.value)) return;
-  sourceSaving.value = true;
-  try {
-    await saveSettings(() => ({ desktopUpdateSource: source }));
-  } catch (error) {
-    ElMessage.error(getUpdateError(error));
-  } finally {
-    sourceSaving.value = false;
-  }
-}
-
-function getUpdateError(error: unknown) {
-  return axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || error.message : String(error);
-}
-
-function formatBytes(bytes: number) {
-  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
-}
-
-async function runUpdate(nextAction: "read" | "check" | "download" | "apply") {
-  if (working.value || sourceSaving.value) return;
-  updateError.value = "";
-  if (!isDesktop) {
-    updateError.value = "请在桌面客户端中检查更新。";
-    return;
-  }
-  try {
-    await runDesktopUpdate(nextAction);
-    if (snapshot.value?.channel === "dev") updateError.value = "开发版本不提供更新检查，请使用正式桌面客户端。";
-  } catch {
-    // 错误与交接状态由全局 Store 保留，关闭面板不取消更新观察。
+    status.value = "更新服务暂时不可用，请稍后重试。";
   }
 }
 </script>
 
-<style lang="scss" scoped>
-.about {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 4px 0 12px;
-
-    .brandMark {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 60px;
-      height: 60px;
-      border-radius: calc(var(--ui-radius) * 1.5);
-      background: var(--el-fill-color-light);
-
-      .brandLogo {
-        width: 48px;
-        height: 48px;
-        object-fit: contain;
-      }
-    }
-
-    .brandInfo {
-      min-width: 0;
-
-      h3 {
-        margin: 0 0 8px;
-        color: var(--el-text-color-primary);
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      .brandMeta {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-      }
-
-      .brandDescription {
-        margin: 5px 0 0;
-        color: var(--el-text-color-secondary);
-        font-size: 12px;
-      }
-    }
-  }
-
-  .infoCard {
-    min-width: 0;
-    border-radius: calc(var(--ui-radius) * 1);
-
-    :deep(.el-card__body) {
-      padding: 14px;
-    }
-
-    .cardHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-
-      .cardLabel {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--el-text-color-primary);
-        font-size: 14px;
-        font-weight: 600;
-      }
-    }
-
-    &.updateCard {
-      .cardHeader {
-        .updateCopy {
-          flex: 1;
-          min-width: 120px;
-
-          .cardDescription {
-            margin-top: 4px;
-          }
-        }
-
-        .updateActions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-
-          a {
-            text-decoration: none;
-          }
-
-          :deep(.el-select) {
-            width: 120px;
-          }
-        }
-      }
-    }
-
-    .buildInfo {
-      display: flex;
-      align-items: baseline;
-      flex-wrap: wrap;
-      gap: 8px 12px;
-      margin-top: 12px;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-
-      code {
-        overflow-wrap: anywhere;
-      }
-    }
-
-    .installFailureNotice {
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: var(--ui-radius);
-      background: var(--el-color-danger-light-9);
-
-      strong { color: var(--el-color-danger); }
-      p { margin: 8px 0 12px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
-    }
-
-    &.repositoryCard {
-      transition: border-color 0.2s;
-
-      :deep(.el-card__body) {
-        padding: 0;
-      }
-      &:hover {
-        border-color: var(--el-border-color-darker);
-      }
-
-      .repositoryLink {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px;
-        color: var(--el-text-color-primary);
-        text-decoration: none;
-
-        &:focus-visible {
-          outline: 2px solid var(--el-color-primary);
-          outline-offset: -2px;
-          border-radius: calc(var(--ui-radius) * 1);
-        }
-
-        .repositoryIcon,
-        .externalIcon {
-          flex-shrink: 0;
-        }
-        .externalIcon {
-          color: var(--el-text-color-secondary);
-        }
-
-        .repositoryInfo {
-          display: flex;
-          flex: 1;
-          flex-direction: column;
-          gap: 6px;
-          min-width: 0;
-
-          .repositoryTitle {
-            font-size: 14px;
-            font-weight: 600;
-          }
-        }
-      }
-    }
-  }
-
-
-}
-
-.tips {
-  margin: 0;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-
-
-.updateResult {
-  padding: 8px 0;
-
-  .resultHeader {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-
-    .resultIcon {
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      width: 40px;
-      height: 40px;
-      border-radius: calc(var(--ui-radius) * 1.25);
-      background: var(--el-color-primary-light-9);
-      color: var(--el-color-primary);
-
-      &.warning {
-        background: var(--el-color-warning-light-9);
-        color: var(--el-color-warning);
-      }
-      &.success {
-        background: var(--el-color-success-light-9);
-        color: var(--el-color-success);
-      }
-      .loadingIcon {
-        animation: spin 1.2s linear infinite;
-      }
-    }
-
-    .resultCopy {
-      min-width: 0;
-
-      h3 {
-        margin: 0 0 6px;
-        color: var(--el-text-color-primary);
-        font-size: 15px;
-        font-weight: 600;
-      }
-      p {
-        margin: 0;
-        color: var(--el-text-color-secondary);
-        font-size: 13px;
-        line-height: 1.6;
-        overflow-wrap: anywhere;
-      }
-    }
-  }
-
-  .updateProgress {
-    margin-top: 20px;
-
-    .progressHeader {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 8px;
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-    }
-  }
-
-  .releaseInfo {
-    margin-top: 20px;
-    padding: 14px;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: calc(var(--ui-radius) * 1);
-
-    .versionComparison {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-
-      .versionItem {
-        display: flex;
-        flex: 1;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 0;
-
-        span {
-          color: var(--el-text-color-secondary);
-          font-size: 12px;
-        }
-        strong {
-          color: var(--el-text-color-primary);
-          font-size: 18px;
-          font-weight: 600;
-          overflow-wrap: anywhere;
-        }
-        &.latestVersion strong {
-          color: var(--el-color-primary);
-        }
-      }
-
-      .versionArrow {
-        flex-shrink: 0;
-        color: var(--el-text-color-placeholder);
-      }
-    }
-
-    .releaseMeta {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 14px;
-      padding-top: 12px;
-      border-top: 1px solid var(--el-border-color-lighter);
-      color: var(--el-text-color-secondary);
-      font-size: 12px;
-
-      code {
-        overflow-wrap: anywhere;
-      }
-    }
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .updateResult .resultHeader .resultIcon .loadingIcon {
-    animation: none;
-  }
-}
+<style scoped lang="scss">
+.about { display: grid; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 16px; }
+.brandLogo { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; }
+h3 { margin: 0 0 8px; }
+p { color: var(--el-text-color-secondary); font-size: 13px; line-height: 1.7; }
+.updateHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+summary { cursor: pointer; font-size: 13px; }
+.licenseText { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; color: var(--el-text-color-secondary); }
 </style>

@@ -39,7 +39,6 @@
       </div>
       <div v-if="selectedSource" class="sourceHint">
         <span>下载较慢时，可取消后切换线路。</span>
-        <el-link :href="selectedSource.homepage" target="_blank" rel="noopener noreferrer" :underline="false" type="primary">来源网站<icon-external-link :size="12" aria-hidden="true" /></el-link>
       </div>
       <p class="description">{{ ready ? '已检测到可用版本，无需重复安装。' : '下载后自动完成安装，无需手动解压或配置。' }}</p>
       <el-alert v-if="status && !status.supported" :title="isMobile && !isRemoteMobile ? '移动端暂不提供 FFmpeg 下载，未配置 FFmpeg 时无法执行依赖它的音视频处理。' : '当前平台暂不提供下载，请在高级设置中使用系统安装版。'" type="warning" :closable="false" showIcon />

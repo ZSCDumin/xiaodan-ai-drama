@@ -11,7 +11,7 @@
 - [问题反馈](https://github.com/ZSCDumin/xiaodan-ai-drama/issues)
 
 目前提供 Windows x64、Mac Apple Silicon、Mac Intel 和 Android ARM64 构建。当前安装包签名状态以对应构建说明为准。
-首次使用可配置自己的模型服务，也可以稍后配置。TF-Router 是可选的第三方服务，需要自行注册并配置密钥；不属于小丹AI漫剧的自有账号平台。
+首次使用可配置自己的模型服务，也可以稍后配置。模型费用由用户自己的服务账号承担。
 
 ## 本地开发
 

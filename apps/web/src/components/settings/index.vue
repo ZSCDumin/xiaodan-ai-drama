@@ -66,9 +66,9 @@ const settingsPanels = [
   { id: "mediaModel", label: "媒体模型", icon: IconPhotoVideo, component: defineAsyncComponent(() => import("./panels/mediaModel/index.vue")) },
   {
     id: "pluginMarket",
-    label: "插件市场",
+    label: "插件管理",
     icon: IconBuildingStore,
-    groupLabel: "市场",
+    groupLabel: "扩展",
     component: defineAsyncComponent(() => import("./panels/pluginMarket/index.vue")),
   },
   { id: "mcp", label: "MCP", icon: IconPlugConnected, groupLabel: "通讯", component: defineAsyncComponent(() => import("./panels/mcp/index.vue")) },

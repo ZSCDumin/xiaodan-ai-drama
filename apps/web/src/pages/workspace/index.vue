@@ -54,42 +54,6 @@
                 <component :is="selectedTool === 'move' ? IconPointer : IconHandStop" :size="18" aria-hidden="true" />
               </el-button>
             </el-tooltip>
-            <el-tooltip :showArrow="false" content="帮助" placement="top" :hideAfter="0" :enterable="false" :triggerKeys="[]" :disabled="helpVisible">
-              <span class="toolTrigger">
-                <el-popover v-model:visible="helpVisible" trigger="click" placement="top-end" :width="196">
-                  <template #reference>
-                    <el-button class="toolButton" text aria-label="帮助">
-                      <icon-help :size="18" />
-                    </el-button>
-                  </template>
-                  <div class="helpMenu">
-                    <el-button
-                      class="helpAction"
-                      tag="a"
-                      text
-                      :icon="IconBook"
-                      href="https://github.com/ZSCDumin/xiaodan-ai-drama#readme"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      @click="helpVisible = false">
-                      使用教程
-                    </el-button>
-                    <el-button
-                      class="helpAction"
-                      tag="a"
-                      text
-                      :icon="IconBug"
-                      href="https://github.com/ZSCDumin/xiaodan-ai-drama/issues"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="小丹AI漫剧需求/BUG反馈表"
-                      @click="helpVisible = false">
-                      汇报 BUG
-                    </el-button>
-                  </div>
-                </el-popover>
-              </span>
-            </el-tooltip>
           </div>
         </el-card>
         <el-tooltip v-if="!agentVisible" content="小丹AI漫剧 Agent" placement="top" :showArrow="false" :hideAfter="0">
@@ -112,7 +76,7 @@
 import { computed, defineAsyncComponent, nextTick, onMounted, onScopeDispose, provide, ref, shallowRef, watch, type ComponentPublicInstance } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import axios from "axios";
-import { IconVector, IconFileText, IconPointer, IconHandStop, IconPlus, IconHelp, IconBook, IconBug } from "@tabler/icons-vue";
+import { IconVector, IconFileText, IconPointer, IconHandStop, IconPlus } from "@tabler/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import settings from "@/components/settings/index.vue";
 import logoUrl from "@toonflow/assets/logo.png";
@@ -139,7 +103,6 @@ const panelOptions = [
 const agentVisible = ref(true);
 const agentWidth = ref(0);
 const settingsVisible = ref(false);
-const helpVisible = ref(false);
 const canvasPanelRef = ref<InstanceType<typeof canvasPanel>>();
 const documentPanelCache = shallowRef<{ directory: string; instance: InstanceType<typeof documentPanel> }>();
 const documentPanelRef = computed(() => documentPanelCache.value?.directory === workspaceStore.project?.directory ? documentPanelCache.value?.instance : undefined);

@@ -1,21 +1,18 @@
 import conf from "conf";
-import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, realpathSync } from "@toonflow/file";
 import { resolve } from "node:path";
-import tfRouter from "@toonflow/providers/language/tfRouter";
 import type { RemoteTeam } from "@/utils/teams";
 import type { A2aSettings } from "@/agent/a2a/settings";
 import type { desktopUpdateAttempt } from "@/types/desktop";
 import type { MobileLinkConfig } from "@/utils/mobileLink";
 import { normalizeNodeMenu, serializeNodeMenu } from "@/lib/nodeMenu";
 
-const autoInstallProviders = [tfRouter];
 const dataDirectory = process.env.TOONFLOW_DATA_DIR ?? resolve(import.meta.dirname, "../../../../../data");
 mkdirSync(dataDirectory, { recursive: true });
 const configDirectory = realpathSync(dataDirectory);
 process.env.TOONFLOW_DATA_DIR = configDirectory;
 
-const config = new conf<{ settings: Record<string, unknown>; disabledSkills: string[]; toolConfigs: Record<string, Record<string, unknown>>; nodeConfigs: Record<string, Record<string, unknown>>; extConfigs: Record<string, Record<string, unknown>>; remoteConnections: Record<string, RemoteTeam>; a2a: A2aSettings; desktopUpdateAttempt: desktopUpdateAttempt; mobileLink: MobileLinkConfig }>({
+const config = new conf<{ settings: Record<string, unknown>; disabledSkills: string[]; retiredProviders: Record<string, unknown>; toolConfigs: Record<string, Record<string, unknown>>; nodeConfigs: Record<string, Record<string, unknown>>; extConfigs: Record<string, Record<string, unknown>>; remoteConnections: Record<string, RemoteTeam>; a2a: A2aSettings; desktopUpdateAttempt: desktopUpdateAttempt; mobileLink: MobileLinkConfig }>({
   cwd: configDirectory,
   configName: "settings",
   configFileMode: 0o600,
@@ -59,21 +56,26 @@ export function cleanNodeMenuSettings(settings: Record<string, unknown>) {
 
 const settings = config.get("settings", {});
 let brandChanged = removeLegacySettings(settings);
-// ACT: 仅替换旧版内置图标的精确指纹，保留用户的账号、密钥、模型与自定义图标。
+// ACT: 退役服务的配置留存在本机私有配置档案，不再作为可选供应商或向界面返回。
+const retired = config.get("retiredProviders", {});
 if (Array.isArray(settings.customProviders)) {
-  for (const provider of settings.customProviders) {
-    if (!provider || provider.id !== "tfRouter" || typeof provider.icon !== "string") continue;
-    if (createHash("sha256").update(provider.icon).digest("hex") !== "365b75d42603de05f15412b0654ca25df5be2b625823a877d8da936b2fe2eaad") continue;
-    provider.icon = tfRouter.icon;
+  const previous = settings.customProviders.filter(provider => typeof provider?.id === "string" && provider.id.toLowerCase() === "tfrouter");
+  if (previous.length) {
+    retired.language = previous;
+    settings.customProviders = settings.customProviders.filter(provider => typeof provider?.id !== "string" || provider.id.toLowerCase() !== "tfrouter");
     brandChanged = true;
   }
 }
-if (brandChanged) config.set("settings", settings);
-
-// ACT: 仅初始化尚未配置的文本供应商；已有列表（包括用户清空的列表）保持原样。
-if (!config.has("settings.customProviders")) {
-  config.set("settings.customProviders", autoInstallProviders.map(({ id, label, icon, version, apiUrl, protocol, models }) =>
-    ({ id, label, icon, version, apiUrl, protocol, models, apiKey: "" })));
+const media = settings.mediaProviderConfigs;
+if (media && typeof media === "object" && !Array.isArray(media) && Object.hasOwn(media, "tfRouter")) {
+  retired.media = Reflect.get(media, "tfRouter");
+  Reflect.deleteProperty(media, "tfRouter");
+  brandChanged = true;
 }
+if (brandChanged) {
+  config.set("retiredProviders", retired);
+  config.set("settings", settings);
+}
+if (!config.has("settings.customProviders")) config.set("settings.customProviders", []);
 
 export default config;

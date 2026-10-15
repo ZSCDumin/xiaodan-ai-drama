@@ -1,4 +1,4 @@
-import { lstat, readFile, readdir, writeAtomic } from "@toonflow/file";
+import { lstat, mkdir, readFile, readdir, rename, writeAtomic } from "@toonflow/file";
 import { join } from "node:path";
 
 // ACT: 仅迁移随软件分发的技能文案，保留技能逻辑、用户修改、作者归属与源链接。
@@ -37,4 +37,16 @@ export default async function migrateSkillBrand(targetDirectory: string, sourceD
     if (target?.isDirectory()) await rewrite(directory);
   }
   await writeAtomic(marker, "1");
+}
+
+export async function retireLegacyProvider(dataDirectory: string) {
+  const source = join(dataDirectory, "providers/tfRouter.ts");
+  const entry = await lstat(source).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  });
+  if (!entry?.isFile()) return;
+  const archive = join(dataDirectory, "retiredProviders");
+  await mkdir(archive, { recursive: true, mode: 0o700 });
+  await rename(source, join(archive, `provider${crypto.randomUUID()}.ts`));
 }
