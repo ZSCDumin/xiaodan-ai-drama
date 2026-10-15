@@ -4,7 +4,12 @@ import { createApp } from "./app";
 import config from "../../../electrobun.config";
 
 const startTime = Date.now();
-const realPort = 3000;
+// ACT: 端口允许用环境变量覆盖，默认仍是 3000；同一台机器上与其他服务共存时避免冲突。
+const realPort = (() => {
+  const value = Number(process.env.TOONFLOW_PORT ?? 3000);
+  if (!Number.isInteger(value) || value < 1024 || value > 65535) throw new Error("TOONFLOW_PORT 必须是 1024–65535 的整数");
+  return value;
+})();
 // 源码位于 apps/server/src，生产构建位于 build/server，均从文件位置定位根目录。
 const fromSource = import.meta.path.endsWith(".ts");
 const appDirectory = resolve(import.meta.dirname, fromSource ? "../../.." : "../..");

@@ -254,3 +254,32 @@ curl -sS -X POST https://www.xiaodukeji.online/license/v1/activate \
 
 **未验收**：真实付款与真实退款、真实 API Key 交付、24 小时离线租约与时钟篡改、各平台真机安装包、
 `apps/server` 整包构建（其 `typecheck` 因仓库已有的 `electrobun.config.ts` 缺失 `.hutch` 生成物而报错，与本次改动无关）。
+
+## 13. 附：漫剧网页服务（本机预览）
+
+把整套 Web + 业务服务作为网页跑在同机时用，供浏览器预览，**不是桌面安装包，也不对公网开放**。
+
+| 项 | 值 |
+| --- | --- |
+| 单元 | `xiaodan-drama-web.service`（已 enable，开机自启） |
+| 端口 | `127.0.0.1:3010`（`TOONFLOW_PORT` 环境变量，默认 3000） |
+| 入口 | `build/server/index.js`，静态资源 `build/web` |
+| 数据目录 | `/home/codes/xiaodan-ai-drama/data` |
+| 访问方式 | SSH 端口转发：本地 `127.0.0.1:3010` → 服务器 `127.0.0.1:3010`，浏览器打开 `http://localhost:3010` |
+
+重新构建与重启：
+
+```sh
+cd /home/codes/xiaodan-ai-drama
+bun run build:server                            # 构建 nodes/tools/ext + web + server
+systemctl restart xiaodan-drama-web.service
+journalctl -u xiaodan-drama-web.service -n 50 --no-pager
+```
+
+**安全边界**：`apps/server/src/index.ts` 的入口只接受 `localhost` / `127.0.0.1` / `[::1]` 的 Host，
+`getAppOrigin` 还要求 `Origin`/`Referer` 的 host 与请求 Host 完全一致；非本机来源一律 403。
+因此**不要**直接用 nginx 挂公网域名——要公网开放必须先移除这道校验并补上鉴权，否则等于把
+可读写本机文件、可调用付费模型的接口公开给任何人。IPv6/多网卡场景同样要显式确认来源策略。
+
+端口说明：`index.ts` 里的端口原本硬编码 3000，与同机的 `personal-site.service` 冲突，
+现已改为可用 `TOONFLOW_PORT` 覆盖（默认仍是 3000）。
