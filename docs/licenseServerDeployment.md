@@ -255,19 +255,58 @@ curl -sS -X POST https://www.xiaodukeji.online/license/v1/activate \
 **未验收**：真实付款与真实退款、真实 API Key 交付、24 小时离线租约与时钟篡改、各平台真机安装包、
 `apps/server` 整包构建（其 `typecheck` 因仓库已有的 `electrobun.config.ts` 缺失 `.hutch` 生成物而报错，与本次改动无关）。
 
-## 13. 附：漫剧网页服务（本机预览）
+## 13. 附：漫剧网页服务（对外预览）
 
-把整套 Web + 业务服务作为网页跑在同机时用，供浏览器预览，**不是桌面安装包，也不对公网开放**。
+把整套 Web + 业务服务作为网页跑在服务器上，浏览器可直接访问；这不是桌面安装包。
 
 | 项 | 值 |
 | --- | --- |
 | 单元 | `xiaodan-drama-web.service`（已 enable，开机自启） |
-| 端口 | `127.0.0.1:3010`（`TOONFLOW_PORT` 环境变量，默认 3000） |
+| 应用端口 | `127.0.0.1:3010`（`TOONFLOW_PORT` 环境变量，默认 3000） |
 | 入口 | `build/server/index.js`，静态资源 `build/web` |
 | 数据目录 | `/home/codes/xiaodan-ai-drama/data` |
-| 访问方式 | SSH 端口转发：本地 `127.0.0.1:3010` → 服务器 `127.0.0.1:3010`，浏览器打开 `http://localhost:3010` |
+| 本机隧道 | SSH 端口转发 `127.0.0.1:3010`，浏览器开 `http://localhost:3010` |
+| 对外入口 | `https://www.xiaodukeji.online:8080`（nginx `xiaodan-drama-external`，HTTPS + Basic Auth） |
 
-重新构建与重启：
+### 为什么必须加鉴权
+
+`apps/server` 没有登录／会话，接口里有任意文件读写（`/api/workspaces/files/{read,write}`）、
+浏览器操控、模型调用和 API Key 领取；它原本靠「只监听 `127.0.0.1` + Host 白名单 + Origin 同源」
+**替代**鉴权。因此对外暴露必须由 nginx 在前面补一层鉴权，不能直接放行。
+
+### nginx 反代的头重写（关键）
+
+应用要求 `Host` 只允许 localhost，且 `Origin`／`Referer` 必须与 `Host` 同源。反代里把两者
+一起改写成 `localhost:3010` 即可同时满足，**无需修改应用代码**：
+
+```nginx
+proxy_set_header Host localhost:3010;
+proxy_set_header Origin http://localhost:3010;
+proxy_set_header Referer http://localhost:3010/;
+proxy_set_header Connection "";   # 只有 SSE，没有 WebSocket
+proxy_buffering off;              # 不关缓冲，流式输出会卡住
+```
+
+注意：`index.ts` 的 Host 白名单与 `getAppOrigin` 都不能放开成任意域名，否则浏览器 DNS 重绑定
+可以绕过来源校验。要调整来源策略必须同时评估这两处。
+
+### 账号口令
+
+| 项 | 值 |
+| --- | --- |
+| 用户名 | `xiaodan` |
+| 口令文件 | `/etc/nginx/.htpasswd-xiaodan-drama`（640 `root:www-data`） |
+| 口令备份 | `/etc/xiaodan-license/drama-basic-auth.txt`（600，**勿入 Git**） |
+
+```sh
+NEW=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)
+printf 'xiaodan:%s\n' "$(openssl passwd -apr1 "$NEW")" > /etc/nginx/.htpasswd-xiaodan-drama
+chown root:www-data /etc/nginx/.htpasswd-xiaodan-drama && chmod 640 /etc/nginx/.htpasswd-xiaodan-drama
+printf '%s' "$NEW" > /etc/xiaodan-license/drama-basic-auth.txt && chmod 600 /etc/xiaodan-license/drama-basic-auth.txt
+systemctl reload nginx
+```
+
+### 重新构建与重启
 
 ```sh
 cd /home/codes/xiaodan-ai-drama
@@ -276,10 +315,14 @@ systemctl restart xiaodan-drama-web.service
 journalctl -u xiaodan-drama-web.service -n 50 --no-pager
 ```
 
-**安全边界**：`apps/server/src/index.ts` 的入口只接受 `localhost` / `127.0.0.1` / `[::1]` 的 Host，
-`getAppOrigin` 还要求 `Origin`/`Referer` 的 host 与请求 Host 完全一致；非本机来源一律 403。
-因此**不要**直接用 nginx 挂公网域名——要公网开放必须先移除这道校验并补上鉴权，否则等于把
-可读写本机文件、可调用付费模型的接口公开给任何人。IPv6/多网卡场景同样要显式确认来源策略。
+### 风险与建议
 
-端口说明：`index.ts` 里的端口原本硬编码 3000，与同机的 `personal-site.service` 冲突，
-现已改为可用 `TOONFLOW_PORT` 覆盖（默认仍是 3000）。
+- Basic Auth 是单一口令、无二次验证，公网会被持续爆破；建议再加 nginx `limit_req` 或 fail2ban，
+  并定期换口令。
+- 该入口具备服务器文件读写能力，拿到它约等于拿到这台机器的可写权限；不建议长期对外开放。
+- 阿里云安全组当前已放行 TCP 8080（实测外网可达）；需要收紧时在安全组与 nginx `allow/deny`
+  两处同时限制来源 IP。
+- 对外用的是 `www.xiaodukeji.online` 的证书，**必须用域名访问**；直接用 IP 会触发证书不匹配告警。
+
+端口说明：`index.ts` 的端口原本硬编码 3000，与同机 `personal-site.service` 冲突，现已可用
+`TOONFLOW_PORT` 覆盖（默认仍是 3000）。
