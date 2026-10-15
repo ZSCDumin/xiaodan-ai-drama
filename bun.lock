@@ -27,6 +27,19 @@
         "electrobun": "2.0.1",
       },
     },
+    "apps/licenseServer": {
+      "name": "@toonflow/licenseServer",
+      "dependencies": {
+        "@toonflow/file": "workspace:*",
+        "express": "^5.2.1",
+        "zod": "^4.6.2",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.4.2",
+        "@types/express": "^5.0.6",
+        "typescript": "^7.0.2",
+      },
+    },
     "apps/mobile": {
       "name": "@toonflow/mobile",
       "dependencies": {
@@ -1355,6 +1368,8 @@
     "@toonflow/file": ["@toonflow/file@workspace:packages/file"],
 
     "@toonflow/i18n": ["@toonflow/i18n@workspace:packages/i18n"],
+
+    "@toonflow/licenseServer": ["@toonflow/licenseServer@workspace:apps/licenseServer"],
 
     "@toonflow/mcp": ["@toonflow/mcp@workspace:packages/mcp"],
 

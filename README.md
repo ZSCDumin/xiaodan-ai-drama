@@ -39,6 +39,10 @@ bun run --cwd apps/mobile build
 
 GitHub Actions 中的“小丹AI漫剧 Mac 安装包”和“小丹AI漫剧 Windows 与 Android 安装包”会生成安装包。
 
+## 本地授权服务
+
+已提供独立的激活码签发、设备管理、签名租约、续期和撤销服务。启动与接口说明见 [授权服务文档](apps/licenseServer/readme.md)。当前尚未接入 APP 激活界面和支付系统，商用待办见 [商用检查报告](docs/commercialAudit.md)。
+
 ## 品牌与版权
 
 Copyright © 2026 ZSCDumin，适用于“小丹AI漫剧”的品牌设计和定制修改。
