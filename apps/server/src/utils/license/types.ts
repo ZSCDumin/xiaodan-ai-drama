@@ -10,3 +10,9 @@ export interface LicenseStatus {
   lastCheckedAt: number;
   serviceUrl: string;
 }
+
+export interface KeyShopStatus {
+  packages: { id: string; label: string; priceFen: number; creditFen: number; description: string }[];
+  channels: { wechat: boolean; alipay: boolean };
+  orders: { id: string; label: string; description: string; amountFen: number; creditFen: number; state: "pending" | "paid" | "delivered"; maskedKey: string | null; createdAt: number }[];
+}

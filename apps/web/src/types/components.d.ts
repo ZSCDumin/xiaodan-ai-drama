@@ -84,6 +84,7 @@ declare module 'vue' {
     IconTextSize: typeof import('@tabler/icons-vue')['IconTextSize']
     IconX: typeof import('@tabler/icons-vue')['IconX']
     KeyInput: typeof import('./../components/settings/panels/general/keyInput.vue')['default']
+    KeyShop: typeof import('./../components/settings/panels/keyShop.vue')['default']
     LanguageModel: typeof import('./../components/settings/panels/languageModel/index.vue')['default']
     LanguageSelect: typeof import('./../components/languageSelect.vue')['default']
     License: typeof import('./../components/settings/panels/license.vue')['default']

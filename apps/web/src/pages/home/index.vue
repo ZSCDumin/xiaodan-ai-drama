@@ -4,6 +4,7 @@
     <el-header class="pageHeader">
       <div class="headerActions">
         <el-button round size="large" @click="settingsRef?.openLicense()">软件授权</el-button>
+        <el-button round size="large" @click="settingsRef?.openKeyShop()">购买 API Key</el-button>
         <el-badge isDot :hidden="!hasDesktopUpdate">
           <el-button round size="large" :icon="IconSettings" :aria-label="hasDesktopUpdate ? '设置，有新版本可用' : '设置'" @click="settingsVisible = true">设置</el-button>
         </el-badge>
@@ -117,7 +118,7 @@ import bg from "./bg.vue";
 import workspacePicker from "./workspacePicker.vue";
 
 const settingsVisible = ref(false);
-const settingsRef = ref<{ openLicense(): void }>();
+const settingsRef = ref<{ openLicense(): void; openKeyShop(): void }>();
 const mobileConnectVisible = ref(false);
 const mobileConnect = defineAsyncComponent(() => import("@/components/mobileConnect.vue"));
 const router = useRouter();

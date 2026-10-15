@@ -5,6 +5,7 @@
       <p class="description">本版本不收集匿名使用统计。</p>
       <p class="description">模型请求会发送到你配置的服务商，请按需管理模型服务与 API Key。</p>
       <p class="description">激活和刷新授权会向软件授权服务发送随机设备编号与设备凭证，不发送模型 API Key 或项目内容。</p>
+      <p class="description">购买 API Key 时，订单服务保存授权编号、套餐、支付和交付记录，Key 加密保存。使用 Key 的模型请求直接发往所配置的服务商，由该服务商统计额度和扣费。</p>
     </section>
   </div>
 </template>

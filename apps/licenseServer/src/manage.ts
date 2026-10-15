@@ -2,17 +2,24 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { dataDirectory, hash, initialize, newCode, openStore } from "./store";
 import type { LicenseRow } from "./store";
+import { createKeyShop } from "./keyShop";
 
 process.umask(0o077);
 const [command, ...args] = process.argv.slice(2);
 if (command === "init") {
   initialize();
   console.log(`签名身份已初始化：${dataDirectory}。请离线备份，禁止随客户端分发。`);
-} else if (["issue", "list", "renew", "revoke", "devices", "releaseDevice", "publicKey"].includes(command ?? "")) {
+} else if (["issue", "list", "renew", "revoke", "devices", "releaseDevice", "publicKey", "keyOrders", "deliverKey"].includes(command ?? "")) {
   const store = openStore();
   const { db, record } = store;
   const daysSchema = z.coerce.number().int().min(1).max(3650);
   try {
+    const shop = createKeyShop(store);
+    if (command === "keyOrders") console.log(JSON.stringify(db.query("SELECT id, licenseId, label, amountFen, creditFen, state, createdAt, paidAt, deliveredAt FROM keyOrders ORDER BY createdAt DESC LIMIT 100").all(), null, 2));
+    if (command === "deliverKey") {
+      shop.deliver(z.string().regex(/^[a-f0-9]{32}$/).parse(args[0]), z.string().min(1).parse(args[1]));
+      console.log("Key 已加密交付，用户可在 APP 中领取");
+    }
     if (command === "publicKey") console.log(JSON.stringify({ keyId: store.keyId, publicKey: store.publicPem }, null, 2));
     if (command === "issue") {
       const days = daysSchema.parse(args[0]);
@@ -56,6 +63,6 @@ if (command === "init") {
     }
   } finally { db.close(); }
 } else {
-  console.error("用法：manage init | publicKey | issue <天数> [设备数] [方案] | list | renew <许可ID> <天数> | revoke <许可ID> | devices <许可ID> | releaseDevice <许可ID> <设备ID>");
+  console.error("用法：manage init | publicKey | issue <天数> [设备数] [方案] | list | renew <许可ID> <天数> | revoke <许可ID> | devices <许可ID> | releaseDevice <许可ID> <设备ID> | keyOrders | deliverKey <订单ID> <私有Key文件路径>");
   process.exitCode = 1;
 }

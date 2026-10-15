@@ -86,13 +86,14 @@ async function requestLicense(action: string, body: unknown) {
       const item = await reader.read();
       if (item.done) break;
       size += item.value.length;
-      if (size > 12000) throw new Error("授权服务响应过大");
+      if (size > 64000) throw new Error("授权服务响应过大");
       chunks.push(item.value);
     }
   } finally { await reader.cancel().catch(() => {}); }
   const result = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   if (!response.ok || result.code !== 200) {
-    const message = response.status === 409 ? "授权设备数量已达上限，请先解除旧设备" : response.status === 403 ? "激活码、设备凭证无效或授权已到期/撤销" : "授权服务暂时不可用，请稍后重试";
+    const message = action.startsWith("keyShop/") ? response.status === 503 ? "套餐购买尚未开放，请联系管理员" : response.status === 403 ? "请先激活软件后购买或领取 Key" : response.status === 409 ? "订单当前尚不能领取 Key，请刷新订单状态" : response.status === 404 ? "订单不存在" : "订单请求未完成，请稍后重试"
+      : response.status === 409 ? "授权设备数量已达上限，请先解除旧设备" : response.status === 403 ? "激活码、设备凭证无效或授权已到期/撤销" : "授权服务暂时不可用，请稍后重试";
     throw Object.assign(new Error(message), { licenseDenied: response.status === 403, status: response.status === 409 ? 409 : 400 });
   }
   return result.data;
@@ -147,4 +148,10 @@ export function assertLicense() {
 export async function ensureLicense() {
   await refreshLicense();
   assertLicense();
+}
+
+export function requestKeyShop(action: "status" | "order" | "orderStatus" | "reveal", body: Record<string, unknown> = {}) {
+  const state = getState();
+  const credentials = { deviceId: state.deviceId, deviceSecret: state.deviceSecret };
+  return requestLicense(`keyShop/${action}`, action === "status" ? credentials : { ...body, credentials });
 }

@@ -45,6 +45,8 @@ GitHub Actions 中的“小丹AI漫剧 Mac 安装包”和“小丹AI漫剧 Wind
 
 ## 品牌与版权
 
+API Key 套餐购买、微信/支付宝付款与管理员交付说明见 [购买接入记录](docs/keyShopIntegration.md)。套餐和商户配置补齐后才能收款；用户也可自行购买并配置 Key，实际用量由服务商计费。
+
 Copyright © 2026 ZSCDumin，适用于“小丹AI漫剧”的品牌设计和定制修改。
 本项目基于 [Toonflow](https://github.com/HBAI-Ltd/Toonflow-app)，原项目 Copyright © 2026 HBAI-Ltd。原项目及本仓库代码依照 [MIT 许可](LICENSE) 分发；第三方依赖遵守各自许可。
 

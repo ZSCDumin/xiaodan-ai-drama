@@ -3,6 +3,8 @@ import type { ErrorRequestHandler } from "express";
 import { z } from "zod";
 import { credentialsSchema, hash } from "./store";
 import type { LicenseRow, LicenseStore } from "./store";
+import { createKeyShop } from "./keyShop";
+import { registerKeyRoutes } from "./keyRoutes";
 
 const activationSchema = credentialsSchema.extend({ code: z.string().regex(/^XD-[A-Za-z0-9_-]{32}$/) });
 
@@ -20,7 +22,7 @@ export function createApp(store: LicenseStore) {
       res.status(403).json({ code: 403, data: null, message: "不允许的请求来源" });
       return;
     }
-    if (req.method === "POST") {
+    if (req.method === "POST" && !/^\/v1\/payments\/(wechat|alipay)\/notify$/.test(req.path)) {
       const now = Date.now();
       for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
       const address = req.socket.remoteAddress ?? "unknown";
@@ -37,7 +39,12 @@ export function createApp(store: LicenseStore) {
     }
     next();
   });
-  app.use(express.json({ limit: "4kb", strict: true }));
+  const callbackBodies = new WeakMap<object, string>();
+  app.use(express.json({ limit: "16kb", strict: true, verify(req, _res, body) {
+    if (req.url === "/v1/payments/wechat/notify") callbackBodies.set(req, body.toString("utf8"));
+  } }));
+  app.use("/v1/payments/alipay/notify", express.urlencoded({ extended: false, limit: "16kb", parameterLimit: 100 }));
+  registerKeyRoutes(app, store, createKeyShop(store), callbackBodies);
   app.get("/health", (_req, res) => res.json({ code: 200, data: { status: "ok" }, message: "成功" }));
   app.get("/v1/publicKey", (_req, res) => res.json({ code: 200, data: { keyId: store.keyId, publicKey: store.publicPem }, message: "成功" }));
   app.post("/v1/activate", (req, res) => {
@@ -83,7 +90,7 @@ export function createApp(store: LicenseStore) {
   }
   app.use((_req, res) => { res.status(404).json({ code: 404, data: null, message: "接口不存在" }); });
   const handleError: ErrorRequestHandler = (err, _req, res, _next) => {
-    const status = err instanceof z.ZodError ? 400 : [400, 403, 409, 413, 415].includes(err.status) ? err.status : 500;
+    const status = err instanceof z.ZodError ? 400 : [400, 402, 403, 404, 409, 413, 415, 502, 503].includes(err.status) ? err.status : 500;
     res.status(status).json({ code: status, data: null, message: status === 500 ? "授权服务内部错误" : status === 400 ? "参数格式错误" : status === 413 ? "请求体过大" : err.message });
   };
   app.use(handleError);
