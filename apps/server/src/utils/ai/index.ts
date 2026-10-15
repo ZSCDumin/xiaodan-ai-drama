@@ -5,6 +5,7 @@ import { getBuiltinModels, getBuiltinProviders } from "@earendil-works/pi-ai/pro
 import type { Context, Model } from "@earendil-works/pi-ai";
 import { z } from "zod";
 import conf from "@/utils/conf";
+import { assertLicense } from "@/utils/license";
 import { readReference } from "@/utils/media/generation";
 import modelContextLimits from "@/utils/ai/modelContextLimits";
 import { createFileTransport, getUnsupportedFileText, type FileProvider } from "@/utils/ai/files";
@@ -152,6 +153,7 @@ export function streamAi(
   references: Awaited<ReturnType<typeof readAiReferences>> = [],
 ) {
   const { provider, model: configuredModel, baseUrl } = configured;
+  assertLicense();
   const model: Model<typeof provider.protocol> = {
     id: configuredModel.id, name: configuredModel.label, provider: "toonflow", api: provider.protocol, baseUrl,
     reasoning: false, input: ["text", "image"],

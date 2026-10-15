@@ -105,6 +105,12 @@ export async function createApp({
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
   app.use("/api/desktop", desktopRequest);
 
+  const { ensureLicense } = await import("@/utils/license");
+  app.use(async (request, _response, next) => {
+    if (request.method === "POST" && /^\/api\/(agent|singleAgent\/run|ai\/(generate|media\/generate)|providers\/debug\/run)$/i.test(request.path.replace(/\/+$/, ""))) await ensureLicense();
+    next();
+  });
+
   const router = await import("@/router");
   router.default(app);
   const [{ createMcpRouter }, { getMcpTools }, { authorizeMcp }, { skillResources }] = await Promise.all([

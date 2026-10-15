@@ -4,6 +4,7 @@
       <h3>数据与隐私</h3>
       <p class="description">本版本不收集匿名使用统计。</p>
       <p class="description">模型请求会发送到你配置的服务商，请按需管理模型服务与 API Key。</p>
+      <p class="description">激活和刷新授权会向软件授权服务发送随机设备编号与设备凭证，不发送模型 API Key 或项目内容。</p>
     </section>
   </div>
 </template>

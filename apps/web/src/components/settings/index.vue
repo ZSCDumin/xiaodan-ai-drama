@@ -25,7 +25,7 @@
               <component
                 :is="activePanel.component"
                 v-bind="
-                  ['pluginMarket', 'languageModel', 'mediaModel', 'personalization', 'deviceLink'].includes(activePanel.id) ? { visible } : {}
+                  ['pluginMarket', 'languageModel', 'mediaModel', 'personalization', 'deviceLink', 'license'].includes(activePanel.id) ? { visible } : {}
                 " />
             </keep-alive>
           </transition>
@@ -83,11 +83,13 @@ const settingsPanels = [
     component: defineAsyncComponent(() => import("./panels/personalization.vue")),
   },
   { id: "privacy", label: "隐私", icon: IconShieldLock, component: defineAsyncComponent(() => import("./panels/privacy.vue")) },
+  { id: "license", label: "软件授权", icon: IconShieldLock, component: defineAsyncComponent(() => import("./panels/license.vue")) },
   { id: "developer", label: "开发者选项", icon: IconCode, component: defineAsyncComponent(() => import("./panels/developer/index.vue")) },
   { id: "about", label: "关于", icon: IconInfoCircle, component: defineAsyncComponent(() => import("./panels/about.vue")) },
 ];
 const activePanel = shallowRef(settingsPanels[0]!);
 const visible = defineModel<boolean>({ default: false });
+defineExpose({ openLicense() { activePanel.value = settingsPanels.find(item => item.id === "license")!; visible.value = true; } });
 </script>
 
 <style lang="scss" scoped>

@@ -41,7 +41,7 @@ GitHub Actions 中的“小丹AI漫剧 Mac 安装包”和“小丹AI漫剧 Wind
 
 ## 本地授权服务
 
-已提供独立的激活码签发、设备管理、签名租约、续期和撤销服务。启动与接口说明见 [授权服务文档](apps/licenseServer/readme.md)。当前尚未接入 APP 激活界面和支付系统，商用待办见 [商用检查报告](docs/commercialAudit.md)。
+已提供激活码签发、设备管理、签名租约、续期和撤销服务，并接入 APP 软件授权界面及 AI 创作校验。启动与接口说明见 [授权服务文档](apps/licenseServer/readme.md)。当前是本机联调配置，尚未接入正式服务和支付系统，商用待办见 [商用检查报告](docs/commercialAudit.md)。
 
 ## 品牌与版权
 

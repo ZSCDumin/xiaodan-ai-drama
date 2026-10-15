@@ -4,6 +4,7 @@ import { join, relative } from "node:path";
 import { mediaProviders, type Provider } from "@toonflow/providers";
 import type { GeneratedMedia, MediaGenerationRequest, MediaModel, MediaReference } from "@toonflow/tools-scaffold/runtime";
 import conf from "@/utils/conf";
+import { ensureLicense } from "@/utils/license";
 import { getMediaProvider, listMediaProviders, loadMediaProviderSource } from "@/utils/media/provider";
 import { lockWorkspaceFiles, resolveWorkspacePath, writeWorkspaceFile } from "@/utils/workspace/files";
 import { beginGeneration, getProviderPrice } from "@/utils/media/billing";
@@ -167,6 +168,7 @@ export async function generateMedia(
   request: MediaGenerationRequest,
   signal?: AbortSignal,
 ): Promise<GeneratedMedia[]> {
+  await ensureLicense();
   signal?.throwIfAborted();
   if (!request.prompt.trim()) invalid("请输入生成提示词");
   const directory = await realpath(cwd);

@@ -7,6 +7,7 @@ import type { AgentImageReference } from "@/agent/runtime/imageAttachments";
 import { getRequestFiles, type RequestFile } from "@/utils/ai/requestFiles";
 import { createFileTransport, FileRequestLimitError } from "@/utils/ai/files";
 import conf from "@/utils/conf";
+import { ensureLicense } from "@/utils/license";
 
 function contentHash(value: unknown) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -46,6 +47,7 @@ export function configureAgentRequests(session: AgentSession, limits?: { maxRequ
     void (async () => {
       let partial: AssistantMessage | undefined;
       try {
+        await ensureLicense();
         if (toolFailure) { const { error } = toolFailure; toolFailure = undefined; throw error; }
         const providers = conf.get("settings", {}).customProviders;
         const provider = Array.isArray(providers) ? providers.find(item => item?.id === model.provider) : undefined;

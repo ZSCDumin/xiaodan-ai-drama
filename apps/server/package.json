@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./license": "./src/utils/license/types.ts",
     "./app": "./src/app.ts",
     "./remoteConnection": "./src/remoteConnection.ts",
     "./desktop": "./src/types/desktop.ts",

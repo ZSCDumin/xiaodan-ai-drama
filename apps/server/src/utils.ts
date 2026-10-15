@@ -1,4 +1,5 @@
 import * as assets from "@/utils/assets";
+import * as license from "@/utils/license";
 import * as browser from "@/utils/browser";
 import * as singleAgent from "@/utils/singleAgent";
 import * as desktop from "@/utils/desktop";
@@ -29,6 +30,7 @@ import * as personalization from "@/utils/personalization";
 import * as mentionFiles from "@/agent/mentionFiles";
 
 export default {
+  license,
   assets,
   browser,
   singleAgent,

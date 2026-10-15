@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { loadMediaProviderSource } from "@/utils/media/provider";
 import { t, translateError } from "@/lib/i18n";
+import { ensureLicense } from "@/utils/license";
 
 export const providerDebugSchema = {
   source: z.string().min(1).max(2 * 1024 * 1024),
@@ -25,6 +26,7 @@ export async function runProviderSource(
   send: (event: Record<string, unknown>) => void,
 ) {
   const startedAt = performance.now();
+  await ensureLicense();
   const secretFields = /api.?key|secret|token|password|authorization|cookie/i;
   const secrets = Object.entries(config).filter(([key, value]) => secretFields.test(key) && typeof value === "string" && value)
     .map(([, value]) => value as string);
