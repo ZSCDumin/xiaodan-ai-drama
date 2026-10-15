@@ -7,6 +7,8 @@ export default {
     // ACT: 与主桌面构建一致，保留 Photon、anydoc 原包及其相邻 WASM/原生文件。
     bun: { entrypoint: "generated/src/index.ts", minify: true, external: ["@silvia-odwyer/photon-node", "@firecrawl/anydoc", "@firecrawl/anydoc-wasm"] },
     copy: {
+      "../../LICENSE": "licenses/projectLicense.txt",
+      "../../docs/brandNotice.md": "licenses/brandNotice.md",
       "../../build/desktop/photon": "bun/node_modules/@silvia-odwyer/photon-node",
       "../../build/desktop/node_modules/@firecrawl": "bun/node_modules/@firecrawl",
       "../../build/mcp": "mcp",

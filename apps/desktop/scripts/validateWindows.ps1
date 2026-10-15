@@ -15,7 +15,7 @@ foreach ($relative in @('app/bin/launcher.exe', 'app/bin/bun.exe', 'app/Resource
 $version = Get-Content (Join-Path $resources 'version.json') -Raw | ConvertFrom-Json
 if ($version.identifier -ne 'local.xiaodan.aidrama.desktop') { throw '应用标识错误' }
 $registry = Get-ItemProperty "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$($version.identifier).stable"
-if ($registry.DisplayName -ne '小丹 AI短剧') { throw '系统安装名称错误' }
+if ($registry.DisplayName -ne '小丹AI漫剧') { throw '系统安装名称错误' }
 $env:TOONFLOW_DATA_DIR = Join-Path $env:RUNNER_TEMP 'xiaodanValidationData'
 $bin = Join-Path $installDirectory 'app/bin'
 $process = Start-Process -FilePath (Join-Path $bin 'launcher.exe') -WorkingDirectory $bin -PassThru -RedirectStandardOutput (Join-Path $output 'startup.stdout.log') -RedirectStandardError (Join-Path $output 'startup.stderr.log')
@@ -32,7 +32,7 @@ try {
         $headers = @{ 'x-toonflow-desktop' = '1'; 'x-toonflow-workspace' = '1'; Origin = $origin; Referer = "$origin/" }
         $settings = Invoke-RestMethod "$origin/api/settings/get" -Headers $headers -TimeoutSec 5
         $page = Invoke-WebRequest "$origin/" -TimeoutSec 5
-        if ($settings.code -eq 200 -and $page.Content.Contains('<title>小丹 AI短剧</title>')) { $ready = $true; break }
+        if ($settings.code -eq 200 -and $page.Content.Contains('<title>小丹AI漫剧</title>')) { $ready = $true; break }
       } catch { }
     }
     Start-Sleep -Seconds 2

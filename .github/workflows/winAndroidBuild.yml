@@ -1,4 +1,4 @@
-name: 小丹 AI短剧 Windows 与 Android 安装包
+name: 小丹AI漫剧 Windows 与 Android 安装包
 
 on:
   push:
@@ -115,7 +115,7 @@ jobs:
           $badging | Set-Content (Join-Path $output 'metadata.txt') -Encoding utf8
           $metadata = $badging -join "`n"
           if (!$metadata.Contains("name='com.toonflow.mobile'")) { throw 'Android 包名错误' }
-          if (!$metadata.Contains("application-label:'小丹 AI短剧'")) { throw 'Android 应用名称错误' }
+          if (!$metadata.Contains("application-label:'小丹AI漫剧'")) { throw 'Android 应用名称错误' }
           if (!$metadata.Contains("native-code: 'arm64-v8a'")) { throw 'Android 运行库架构错误' }
           if ($metadata.Contains('application-debuggable')) { throw '发布 APK 不应启用调试' }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -143,7 +143,7 @@ jobs:
             $logoMatches = @($logos | Where-Object { (Hash-Bytes (Read-Entry $_)) -eq (Hash-Bytes $sourceLogo) })
             if (!$logoMatches.Count) { throw 'APK 未包含确认的 Logo' }
             $html = [System.Text.Encoding]::UTF8.GetString((Read-Entry $archive.GetEntry('assets/payload/web/index.html')))
-            if (!$html.Contains('小丹 AI短剧')) { throw 'APK 前端名称错误' }
+            if (!$html.Contains('小丹AI漫剧')) { throw 'APK 前端名称错误' }
           } finally { $archive.Dispose() }
           '签名、发布模式、应用名称、ARM64 运行库、服务入口与 Logo 验证通过；未在 ARM64 手机运行。' | Set-Content (Join-Path $output 'validation.txt') -Encoding utf8
           $destination = Join-Path $output 'xiaodan-ai-drama-android-arm64.apk'

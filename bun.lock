@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "toonflow",
+      "name": "xiaodan-ai-drama",
       "devDependencies": {
         "@toonflow/file": "workspace:*",
         "@types/bun": "^1.4.2",

@@ -1,11 +1,6 @@
 name: Windows 已有安装包验证
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/windowsValidate.yml"
-      - "apps/desktop/scripts/validateWindows.ps1"
 permissions:
   contents: read
   actions: read

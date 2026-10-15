@@ -84,7 +84,6 @@ declare module 'vue' {
     IconFolders: typeof import('@tabler/icons-vue')['IconFolders']
     IconKey: typeof import('@tabler/icons-vue')['IconKey']
     IconLanguage: typeof import('@tabler/icons-vue')['IconLanguage']
-    IconLogin: typeof import('@tabler/icons-vue')['IconLogin']
     IconMovie: typeof import('@tabler/icons-vue')['IconMovie']
     IconSitemap: typeof import('@tabler/icons-vue')['IconSitemap']
     IconTextSize: typeof import('@tabler/icons-vue')['IconTextSize']

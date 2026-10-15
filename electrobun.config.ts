@@ -4,9 +4,9 @@ const startupTarget = process.platform === "darwin" ? (process.arch === "x64" ? 
 
 export default {
   app: {
-    name: process.platform === "win32" ? "xiaodan" : "小丹 AI短剧",
+    name: "xiaodan",
     identifier: "local.xiaodan.aidrama.desktop",
-    version: process.env.appVersion ?? "2.0.0",
+    version: process.env.appVersion ?? "2.0.1",
     urlSchemes: ["toonflow"],
   },
   build: {
@@ -14,6 +14,8 @@ export default {
     // ACT: Photon 与 anydoc 按包所在目录读取 WASM/原生文件，保留原包，避免引用构建机路径。
     bun: { entrypoint: "apps/desktop/src/index.ts", minify: true, external: ["@silvia-odwyer/photon-node", "@firecrawl/anydoc", "@firecrawl/anydoc-wasm"] },
     copy: {
+      "LICENSE": "licenses/projectLicense.txt",
+      "docs/brandNotice.md": "licenses/brandNotice.md",
       "build/desktop/photon": "bun/node_modules/@silvia-odwyer/photon-node",
       "build/desktop/node_modules/@firecrawl": "bun/node_modules/@firecrawl",
       ...(process.platform === "win32" ? {

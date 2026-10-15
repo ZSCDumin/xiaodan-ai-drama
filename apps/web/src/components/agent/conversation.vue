@@ -8,7 +8,7 @@
               <div class="welcomeHeader">
                 <span class="welcomeIcon" aria-hidden="true"><img class="welcomeLogo" :src="logoUrl" alt="" /></span>
                 <div>
-                  <p class="welcomeLabel">你好，我是小丹 AI短剧助手</p>
+                  <p class="welcomeLabel">你好，我是小丹AI漫剧助手</p>
                   <h3>从一个想法开始</h3>
                 </div>
               </div>

@@ -8,9 +8,9 @@
       </nav>
       <div class="marketActions">
         <el-button tag="a" href="https://api.toonflow.net/console/plugIn" target="_blank" rel="noopener noreferrer" size="small" text :icon="IconExternalLink">
-          网页版市场
+          第三方市场 · TF-Router
         </el-button>
-        <el-button tag="a" href="https://qcn7xdsqgc4z.feishu.cn/docx/KNBNd9naqolsy6xjAOCcEAkqnRd" target="_blank" rel="noopener noreferrer" size="small" text :icon="IconBook">
+        <el-button tag="a" href="https://github.com/ZSCDumin/xiaodan-ai-drama#readme" target="_blank" rel="noopener noreferrer" size="small" text :icon="IconBook">
           开发者文档
         </el-button>
         <template v-if="activeTab === 'installed'">
@@ -120,7 +120,7 @@
           <p v-if="plugin.description" class="pluginDescription">{{ plugin.description }}</p>
           <el-text v-if="plugin.loadError" type="danger" size="small">{{ plugin.loadError }}</el-text>
           <div v-if="plugin.author || plugin.version" class="pluginMeta">
-            <span v-if="plugin.author" class="pluginAuthor">{{ plugin.author }}</span>
+            <span v-if="plugin.author" class="pluginAuthor">{{ plugin.author === 'Toonflow' ? '内置组件' : plugin.author }}</span>
             <span v-if="plugin.version" class="pluginVersion" type="info" size="small" effect="plain">v{{ plugin.version }}</span>
           </div>
           <div v-if="isMarketTab" class="pluginFooter" @click.stop>

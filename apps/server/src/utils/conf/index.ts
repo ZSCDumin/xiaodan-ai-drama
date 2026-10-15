@@ -1,4 +1,5 @@
 import conf from "conf";
+import { createHash } from "node:crypto";
 import { mkdirSync, readdirSync, realpathSync } from "@toonflow/file";
 import { resolve } from "node:path";
 import tfRouter from "@toonflow/providers/language/tfRouter";
@@ -57,7 +58,17 @@ export function cleanNodeMenuSettings(settings: Record<string, unknown>) {
 }
 
 const settings = config.get("settings", {});
-if (removeLegacySettings(settings)) config.set("settings", settings);
+let brandChanged = removeLegacySettings(settings);
+// ACT: 仅替换旧版内置图标的精确指纹，保留用户的账号、密钥、模型与自定义图标。
+if (Array.isArray(settings.customProviders)) {
+  for (const provider of settings.customProviders) {
+    if (!provider || provider.id !== "tfRouter" || typeof provider.icon !== "string") continue;
+    if (createHash("sha256").update(provider.icon).digest("hex") !== "365b75d42603de05f15412b0654ca25df5be2b625823a877d8da936b2fe2eaad") continue;
+    provider.icon = tfRouter.icon;
+    brandChanged = true;
+  }
+}
+if (brandChanged) config.set("settings", settings);
 
 // ACT: 仅初始化尚未配置的文本供应商；已有列表（包括用户清空的列表）保持原样。
 if (!config.has("settings.customProviders")) {

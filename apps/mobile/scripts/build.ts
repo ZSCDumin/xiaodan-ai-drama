@@ -91,6 +91,9 @@ const bridgeResult = await Bun.build({
   naming: "content.js", outdir: browserBridge, minify: true,
 });
 if (!bridgeResult.success) throw new AggregateError(bridgeResult.logs, "构建移动端浏览器桥接失败");
+await mkdir(join(staging, "assets/licenses"), { recursive: true });
+await copyFile(join(projectRoot, "LICENSE"), join(staging, "assets/licenses/projectLicense.txt"));
+await copyFile(join(projectRoot, "docs/brandNotice.md"), join(staging, "assets/licenses/brandNotice.md"));
 await copyFile(join(projectRoot, "apps/web/node_modules/jsqr/LICENSE"), join(staging, "assets/jsqrLicense.txt"));
 
 const apk = join(buildRoot, "toonflowMobile.apk");

@@ -1,48 +1,12 @@
 <template>
   <div class="privacy">
-    <section class="settingSection" aria-labelledby="collectionTitle">
-      <div class="settingHeader">
-        <h3 id="collectionTitle">匿名使用统计</h3>
-        <el-switch
-          :modelValue="privacySettings.dataCollectionEnabled"
-          aria-label="匿名使用统计"
-          @change="(value) => settings.privacy = { ...privacySettings, dataCollectionEnabled: value === true }" />
-      </div>
-      <p class="description">帮助我们了解常用功能，改进使用体验。默认开启，可随时关闭。</p>
-    </section>
-
-    <section class="settingSection" aria-labelledby="metricsTitle">
-      <h3 id="metricsTitle">统计内容</h3>
-      <dl class="metricList">
-        <div v-for="metric in metrics" :key="metric.label" class="metricItem">
-          <dt>{{ metric.label }}</dt>
-          <dd>{{ metric.description }}</dd>
-        </div>
-      </dl>
-      <p class="description">统计不包含提示词、对话、文件内容、项目名称、路径、账号或密钥。</p>
-    </section>
-
-    <section class="settingSection" aria-labelledby="anonymousIdTitle">
-      <h3 id="anonymousIdTitle">匿名 ID</h3>
-      <code class="anonymousId">{{ privacySettings.anonymousId || "开启后自动生成" }}</code>
+    <section class="settingSection">
+      <h3>数据与隐私</h3>
+      <p class="description">本版本不收集匿名使用统计。</p>
+      <p class="description">模型请求会发送到你配置的服务商，请按需管理模型服务与 API Key。</p>
     </section>
   </div>
 </template>
-
-<script setup lang="ts">
-import { translate } from "@toonflow/i18n/vue";
-
-import { privacySettings, settings } from "@/stores/settings";
-
-const metrics = [
-  { get label() { return translate("使用与回访"); }, get description() { return translate("随机匿名标识、访问次数与时间"); } },
-  { get label() { return translate("使用活跃"); }, get description() { return translate("使用时长和交互次数，不含输入内容"); } },
-  { get label() { return translate("运行环境"); }, get description() { return translate("软件版本、桌面或网页端、系统、浏览器和语言"); } },
-  { get label() { return translate("功能使用"); }, get description() { return translate("引导、画布与文档的使用情况"); } },
-  { get label() { return translate("使用规模"); }, get description() { return translate("项目、模型配置、节点与连线数量，以及节点类型"); } },
-  { get label() { return translate("Agent 使用"); }, get description() { return translate("发送次数、完成情况和耗时"); } },
-];
-</script>
 
 <style lang="scss" scoped>
 .privacy {

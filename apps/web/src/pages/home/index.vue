@@ -21,9 +21,9 @@
     <el-main class="pageContent">
       <section class="creationPanel" aria-label="创建项目">
         <div class="brand">
-          <el-image class="brandLogo" :src="logoUrl" fit="contain" alt="小丹 AI短剧" />
+          <el-image class="brandLogo" :src="logoUrl" fit="contain" alt="小丹AI漫剧" />
           <div class="brandCopy">
-            <h1>小丹 <span>AI短剧</span></h1>
+            <h1>小丹<span>AI漫剧</span></h1>
             <p>从一句灵感，走到完整漫剧</p>
           </div>
         </div>

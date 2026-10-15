@@ -68,7 +68,7 @@
                       tag="a"
                       text
                       :icon="IconBook"
-                      href="https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf"
+                      href="https://github.com/ZSCDumin/xiaodan-ai-drama#readme"
                       target="_blank"
                       rel="noopener noreferrer"
                       @click="helpVisible = false">
@@ -79,48 +79,32 @@
                       tag="a"
                       text
                       :icon="IconBug"
-                      href="https://docs.qq.com/smartsheet/form/EmvmQBrmlPmr%2Fss_vsqk2v%2FvhiGzE?tab=ss_vsqk2v"
+                      href="https://github.com/ZSCDumin/xiaodan-ai-drama/issues"
                       target="_blank"
                       rel="noopener noreferrer"
-                      title="Toonflow 需求/BUG反馈表"
+                      title="小丹AI漫剧需求/BUG反馈表"
                       @click="helpVisible = false">
                       汇报 BUG
                     </el-button>
-                    <el-button class="helpAction" text :icon="IconBrandWechat" @click="showContact('community')">加入交流群</el-button>
-                    <el-button class="helpAction" text :icon="IconBriefcase" @click="showContact('business')">商务合作</el-button>
                   </div>
                 </el-popover>
               </span>
             </el-tooltip>
           </div>
         </el-card>
-        <el-tooltip v-if="!agentVisible" content="Toonflow Agent" placement="top" :showArrow="false" :hideAfter="0">
+        <el-tooltip v-if="!agentVisible" content="小丹AI漫剧 Agent" placement="top" :showArrow="false" :hideAfter="0">
           <el-button
             class="agentButton"
             :class="{ standalone: activePanel !== 'canvas' }"
             :aria-expanded="agentVisible"
-            aria-label="Toonflow Agent"
+            aria-label="小丹AI漫剧 Agent"
             aria-controls="agentPanel"
-            @click="agentVisible = !agentVisible"></el-button>
+            @click="agentVisible = !agentVisible"><img class="agentLogo" :src="logoUrl" alt="" /></el-button>
         </el-tooltip>
       </div>
     </div>
     <floatingAgent v-model="agentVisible" @resize="agentWidth = $event" />
     <settings v-model="settingsVisible" />
-    <el-dialog v-model="contactVisible" :title="contactInfo.title" width="min(360px, calc(100vw - 32px))" alignCenter appendToBody>
-      <div class="contactContent">
-        <q-r-code
-          :value="contactInfo.url"
-          :size="192"
-          type="svg"
-          color="#000000"
-          bgColor="#ffffff"
-          borderless
-          role="img"
-          :aria-label="`${contactInfo.title}二维码`" />
-        <p class="contactTip">{{ contactInfo.tip }}</p>
-      </div>
-    </el-dialog>
   </main>
 </template>
 
@@ -128,10 +112,10 @@
 import { computed, defineAsyncComponent, nextTick, onMounted, onScopeDispose, provide, ref, shallowRef, watch, type ComponentPublicInstance } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import axios from "axios";
-import { IconVector, IconFileText, IconPointer, IconHandStop, IconPlus, IconHelp, IconBook, IconBug, IconBrandWechat, IconBriefcase } from "@tabler/icons-vue";
+import { IconVector, IconFileText, IconPointer, IconHandStop, IconPlus, IconHelp, IconBook, IconBug } from "@tabler/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { QRCode } from "tdesign-vue-next";
 import settings from "@/components/settings/index.vue";
+import logoUrl from "@toonflow/assets/logo.png";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { registerWorkspaceControl, waitForControlValue } from "@/lib/mcpControl";
 import anonymousData from "@/lib/anonymousData";
@@ -156,27 +140,6 @@ const agentVisible = ref(true);
 const agentWidth = ref(0);
 const settingsVisible = ref(false);
 const helpVisible = ref(false);
-const contactVisible = ref(false);
-const contactType = ref<"community" | "business">("community");
-const contacts = {
-  community: {
-    title: "加入交流群",
-    url: "https://work.weixin.qq.com/u/vc36adcc89845edcbe?v=5.0.3.63936&bb=85b8d228e8",
-    tip: "Toonflow 是为爱发电的开源项目。欢迎文明交流、友善反馈；回复可能需要一些时间，请避免责问或命令式沟通，感谢你的理解与尊重。",
-  },
-  business: {
-    title: "商务合作",
-    url: "https://work.weixin.qq.com/u/vc0f54596c5837d05a?v=5.0.8.70675",
-    tip: "此联系方式仅用于商务合作接洽，不提供问题答疑。使用问题欢迎在交流群交流，需求与 BUG 可通过反馈表提交。感谢理解。",
-  },
-};
-const contactInfo = computed(() => contacts[contactType.value]);
-
-function showContact(type: "community" | "business") {
-  contactType.value = type;
-  helpVisible.value = false;
-  contactVisible.value = true;
-}
 const canvasPanelRef = ref<InstanceType<typeof canvasPanel>>();
 const documentPanelCache = shallowRef<{ directory: string; instance: InstanceType<typeof documentPanel> }>();
 const documentPanelRef = computed(() => documentPanelCache.value?.directory === workspaceStore.project?.directory ? documentPanelCache.value?.instance : undefined);
@@ -512,13 +475,11 @@ function saveDocumentNode(directory: string, canvasPath: string, nodeId: string,
         }
 
         .agentLogo {
-          width: 24px;
-          height: 24px;
+          width: 32px;
+          height: 32px;
           flex-shrink: 0;
-          background: currentColor;
-          mask-size: contain;
-          mask-position: center;
-          mask-repeat: no-repeat;
+          object-fit: contain;
+          border-radius: 50%;
         }
 
         @media (prefers-reduced-motion: reduce) {
