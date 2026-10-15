@@ -1,0 +1,55 @@
+name: Windows 已有安装包验证
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/windowsValidate.yml"
+      - "apps/desktop/scripts/validateWindows.ps1"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  validate:
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: 查找最近的完整 Windows 安装包
+        id: package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json' }
+          $artifact = $null
+          for ($attempt = 0; $attempt -lt 20; $attempt++) {
+            $result = Invoke-RestMethod "https://api.github.com/repos/${{ github.repository }}/actions/artifacts?per_page=100" -Headers $headers
+            $artifact = $result.artifacts | Where-Object { $_.name -eq 'xiaodan-ai-drama-windows-x64' -and !$_.expired -and $_.size_in_bytes -gt 1000000 } | Sort-Object created_at -Descending | Select-Object -First 1
+            if ($artifact) { break }
+            Start-Sleep -Seconds 15
+          }
+          if (!$artifact) { throw '找不到包含安装程序的 Windows 构建产物' }
+          "run=$($artifact.workflow_run.id)" >> $env:GITHUB_OUTPUT
+          "sourceSha=$($artifact.workflow_run.head_sha)" >> $env:GITHUB_OUTPUT
+      - uses: actions/download-artifact@v5
+        with:
+          name: xiaodan-ai-drama-windows-x64
+          path: build/desktop/artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.package.outputs.run }}
+      - name: 安装与启动验证
+        run: |
+          ./apps/desktop/scripts/validateWindows.ps1
+          '安装包源提交：${{ steps.package.outputs.sourceSha }}' >> build/windowsPackages/validation.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: xiaodan-ai-drama-windows-x64-verified
+          path: build/windowsPackages/*
+          if-no-files-found: warn
+          retention-days: 30
