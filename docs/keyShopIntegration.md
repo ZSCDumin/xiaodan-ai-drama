@@ -1,6 +1,6 @@
 # API Key 套餐购买与交付
 
-版本：2.0.4，日期：2026-10-15。收款已接入「小丹科研AI商城」，尚未完成真实付款验收。
+版本：2.2.0，日期：2026-10-16。收款已接入「小丹科研AI商城」，商城前台已提供充值入口，充值订单可在商城「我的订单」查看；真实付款仍待正式商户号验收。
 
 ## 当前业务规则
 
@@ -31,6 +31,36 @@ APP(桌面端本地服务)
 - 回调失败由商城按 1s／5s／15s／60s／300s 重试；最终失败也不影响已收款状态。
 - 订单状态：`pending` 待支付 → `paid` 已付款待交付 → `delivered` 已交付。付款不会生成虚假 API Key，也不会增加 APP 钱包余额。
 
+## 商城前台充值（新增）
+
+商城用户不安装桌面端也能购买 API 额度：在商城「AI 漫剧 API 充值」页选择 100／200／500／1000 元，直接走同一套收款链路。
+
+```
+商城用户(已登录)
+  └─ POST /api/drama/recharge ─→ 商城服务端
+       └─ POST 127.0.0.1:8092/v1/keyShop/mallOrder   (X-Mall-Internal 共享密钥)
+            └─ 授权服务：建虚拟许可 mall-{用户ID} → 落单 → 调商城 partner 接口 → 七相PAY
+                   返回收银台 payUrl，前端跳转支付
+  付款后回调核销链路与上文完全相同 → 订单 paid → 管理员交付 Key
+```
+
+- 授权服务为每个商城用户自动建立虚拟许可 `mall-{商城用户ID}`（`codeHash` 同样以 `mall-` 开头，不与真实激活码 `XD-` 冲突），用于挂载订单。
+- 商城侧 `POST /api/drama/recharge`、`POST /api/drama/status` 需要用户登录态；金额仅允许 100／200／500／1000，套餐号由服务端拼成 `recharge{金额}`，客户端不能自定金额。
+- **充值订单展示**：`GET /api/drama/orders`（需登录）返回该用户全部充值订单，数据源是授权服务 `mallStatus` 按 `mall-{用户ID}` 归属筛选出的 `keyOrders`，再并入商城本地 `partner_orders` 的 `pay_url`／`status`。商城「我的订单」页在普通订单上方单独展示「API 充值订单」分区：待支付且链接未过期可直接续付，链接已过期则引导去充值页重新下单，已付款显示等待交付。
+- 交付仍是人工：订单变 `paid` 后按「管理员交付」一节操作。商城用户当前没有自助领 Key 入口，需管理员线下发放。
+
+### 内部接口鉴权（重要）
+
+`/v1/keyShop/mallOrder` 与 `/v1/keyShop/mallStatus` 不接受设备凭证，靠 `X-Mall-Internal` 共享密钥鉴权。`mallStatus` 的 `orderId` 参数已改为可选（列表查询不需要它），实际返回值始终是该 `mallUserId` 名下的订单列表，用户隔离由 `mall-{用户ID}` 这一许可编号保证。
+
+**不能只用来源 IP 判断。** nginx 通过 `proxy_pass http://127.0.0.1:8092/` 反代 `/license/`，公网请求到授权服务时 `remoteAddress` 也是 `127.0.0.1`，本机判断形同虚设。曾因此导致公网可直接下单，已改为常量时间比对的共享密钥。
+
+| 变量 | 位置 | 说明 |
+| --- | --- | --- |
+| `XIAODAN_MALL_INTERNAL_TOKEN` | 两端 `.env` | 至少 32 位随机串，两端必须一致；商城放在 `/home/codes/xiaodan-market/.env`，授权服务放在 `/etc/xiaodan-license.env` |
+
+轮换：生成新值 → 同时更新两端 → 重启两个服务。缺失或不足 32 位时内部接口一律拒绝（失败关闭）。
+
 ## 授权服务环境变量
 
 | 变量 | 说明 |
@@ -39,6 +69,7 @@ APP(桌面端本地服务)
 | `XIAODAN_MALL_PARTNER_KEY` | 与商城共享的 HMAC 密钥，至少 32 位；与商城的 `PARTNER_API_KEY` 相同 |
 | `XIAODAN_PAYMENT_PUBLIC_URL` | 本服务的 HTTPS 地址，用于生成商城回调地址，例如 `https://www.xiaodukeji.online/license` |
 | `XIAODAN_KEY_ENCRYPTION_KEY` | 64 个十六进制字符（32 字节），AES-256-GCM 加密交付的 Key |
+| `XIAODAN_MALL_INTERNAL_TOKEN` | 与商城共享的内部接口密钥，至少 32 位；见「内部接口鉴权」 |
 | `XIAODAN_LICENSE_DATA_DIR` / `XIAODAN_LICENSE_PORT` | 数据目录与端口 |
 | `XIAODAN_LICENSE_PUBLIC_HOSTS` / `XIAODAN_LICENSE_TRUST_PROXY` | 反向代理部署时的 Host 白名单与限流分桶 |
 
@@ -89,7 +120,8 @@ bun run --cwd apps/licenseServer manage deliverKey <订单ID> <私有Key文件�
 
 ## 发布前条件
 
-- 真实付款尚未走过一遍：本次只验证了签名下单拿到七相PAY 收银台地址，以及模拟支付成功后的回调核销。
+- **正式商户号待处理**：旧配置的 `QIXIANG_PID=4266` 在七相PAY 侧返回「商户密钥错误」（查单接口同样报错），即 PID 与 KEY 不匹配。当前临时改用七相PAY 官方测试账号 `QIXIANG_PID=1003` 跑通链路，**正式上线前必须换回经营者自己的 PID/KEY**，并在商城 `.env` 更新 `QIXIANG_PID`、`QIXIANG_KEY` 后重启。
+- 已用测试账号完成端到端验证：商城下单 → 七相PAY 返回收银台 → 模拟 MD5 验签回调 → 商城核销合作方订单 → HMAC 通知授权服务 → 订单 `paid`。**真实扫码付款仍未由人工走过一遍。**
 - 退款、关闭未付款订单、上游 Key 撤销/补发、交付时限和客户支持流程仍需经营者确定并接入，当前没有自动退款接口。
 - 商城侧共享密钥泄露等于可任意下单；密钥只在服务器 `.env` 保存，需要定期轮换并同时更新两端。
 - 正式发布前按商用审查清单完成签名、凭证存储与依赖复验。

@@ -90,5 +90,29 @@ export function createKeyShop(store: LicenseStore) {
     record(row.licenseId, `keyRevealed:${id}`);
     return { apiKey };
   }
-  return { get, order, paid, deliver, reveal, list: (licenseId: string) => db.query<KeyOrder, [string]>("SELECT * FROM keyOrders WHERE licenseId=? ORDER BY createdAt DESC LIMIT 50").all(licenseId).map(publicOrder) };
+  function ensureMallLicense(mallUserId: string) {
+    const licenseId = `mall-${mallUserId}`;
+    const exists = db.query<{ id: string }, [string]>("SELECT id FROM licenses WHERE id = ?").get(licenseId);
+    if (!exists) {
+      const now = Date.now();
+      // 商城用户虚拟授权：codeHash 以 "mall-" 开头避免与真实激活码 XD- 冲突
+      db.query("INSERT INTO licenses (id, codeHash, plan, createdAt, expiresAt, maxDevices, revision) VALUES (?, ?, ?, ?, ?, ?, ?)").run(licenseId, `mall-${mallUserId}`, "mall-recharge", now, 4102444800000, 1, 1);
+    }
+    return licenseId;
+  }
+  function mallOrder(mallUserId: string, requestId: string, packageId: string, channel: KeyOrder["channel"]) {
+    const licenseId = ensureMallLicense(mallUserId);
+    return order(licenseId, requestId, packageId, channel);
+  }
+  function mallStatus(mallUserId: string, orderId: string) {
+    const licenseId = `mall-${mallUserId}`;
+    return publicOrder(get(orderId, licenseId));
+  }
+  function list(licenseId: string) {
+    return db.query<KeyOrder, [string]>("SELECT * FROM keyOrders WHERE licenseId=? ORDER BY createdAt DESC LIMIT 50").all(licenseId).map(publicOrder);
+  }
+  function mallList(mallUserId: string) {
+    return list(`mall-${mallUserId}`);
+  }
+  return { get, order, paid, deliver, reveal, mallOrder, mallStatus, mallList, list };
 }
