@@ -9,10 +9,13 @@
       <div class="actions"><el-button :disabled="busy || !status?.channels.wechat" @click="buy(item.id, 'wechat')">微信支付</el-button><el-button :disabled="busy || !status?.channels.alipay" @click="buy(item.id, 'alipay')">支付宝</el-button></div>
     </section>
     <section v-if="checkout?.qrCode && checkout.state === 'pending'" class="checkout">
-      <qr-code :value="checkout.qrCode" :size="200" />
+      <QRCode :value="checkout.qrCode" :size="200" />
       <p>请使用{{ checkout.channel === 'wechat' ? '微信' : '支付宝' }}扫码支付 ¥{{ money(checkout.amountFen) }}</p>
       <p>付款后等待管理员交付 Key。请勿重复付款。</p>
-      <el-button :disabled="busy" @click="check(checkout.orderId)">查询付款结果</el-button>
+      <div class="actions">
+        <el-button :disabled="busy" @click="check(checkout.orderId)">查询付款结果</el-button>
+        <el-link type="primary" :href="checkout.qrCode" target="_blank" rel="noopener noreferrer">在新窗口打开支付页面</el-link>
+      </div>
     </section>
     <p v-if="message" role="status">{{ message }}</p>
     <section><h4>我的订单</h4>
