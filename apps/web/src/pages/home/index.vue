@@ -418,6 +418,7 @@ async function createProject(fromPrompt = true) {
     align-items: center;
     justify-content: space-between;
     min-height: 72px;
+    height: auto;
     flex-wrap: wrap;
     gap: 12px;
     padding: 16px clamp(20px, 4vw, 56px);
