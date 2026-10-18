@@ -66,7 +66,14 @@ function currentSession(request: Request): MallSession | null {
   if (signature.length !== expected.length || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
   const session = sessions.get(id);
   if (!session) return null;
-  if (session.exp <= Date.now()) { sessions.delete(id); persistSessions(); return null; }
+  const now = Date.now();
+  if (session.exp <= now) { sessions.delete(id); persistSessions(); return null; }
+  // 滑动续期：剩余不足一半时续满，桌面端长期离线使用也不会在第 7 天被强制下线。
+  // 写入频率约为每 3.5 天一次，不影响请求路径。
+  if (session.exp - now < SESSION_TTL_MS / 2) {
+    session.exp = now + SESSION_TTL_MS;
+    persistSessions();
+  }
   return session;
 }
 function cookieHeader(request: Request, value: string, maxAgeSeconds: number) {
