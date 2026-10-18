@@ -76,6 +76,10 @@ APP(桌面端本地服务)
 商城侧需要 `PARTNER_API_KEY`（同值）与 `PARTNER_NOTIFY_ALLOWED_HOSTS`（允许回调的主机名）。
 缺套餐、加密密钥或商城配置时禁用下单，客户端看到“套餐购买尚未开放”。
 
+网页版和桌面端都接入小丹科研AI商城的账号登录。登录后 `/api/keyShop/*` 走商城账号维度
+（订单归属 `mall-<商城用户ID>`，经商城的 `/api/drama/recharge|status|orders|reveal`），
+未登录时回落到设备许可维度。两条链路共用同一套订单表与交付流程。
+
 部署位置、密钥轮换、备份恢复与故障排查见 [授权服务部署与运维手册](licenseServerDeployment.md)。
 
 `XIAODAN_KEY_ENCRYPTION_KEY` 由密钥管理工具生成、注入并离线备份，禁止放入客户端、Git 或聊天。

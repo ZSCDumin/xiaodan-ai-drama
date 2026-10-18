@@ -265,7 +265,7 @@ curl -sS -X POST https://www.xiaodukeji.online/license/v1/activate \
 | 应用端口 | `127.0.0.1:3010`（`TOONFLOW_PORT` 环境变量，默认 3000） |
 | 入口 | `build/server/index.js`，静态资源 `build/web` |
 | 数据目录 | `/home/codes/xiaodan-ai-drama/data` |
-| 对外入口 | `https://www.xiaodukeji.online/ai_drama/`（nginx 子路径 + Basic Auth） |
+| 对外入口 | `https://www.xiaodukeji.online/ai_drama/`（nginx 子路径 + 商城账号登录） |
 | 旧入口 | `https://www.xiaodukeji.online:8080` 现在 301 到 `/ai_drama/` |
 | 构建变量 | `XIAODAN_WEB_BASE=/ai_drama/`（不设则仍按根路径 `/` 构建） |
 
@@ -313,21 +313,27 @@ proxy_buffering off;              # 不关缓冲，流式输出会卡住
 注意：`index.ts` 的 Host 白名单与 `getAppOrigin` 都不能放开成任意域名，否则浏览器 DNS 重绑定
 可以绕过来源校验。要调整来源策略必须同时评估这两处。
 
-### 账号口令
+### 商城账号登录（替代 Basic Auth）
+
+网页入口不再使用 nginx Basic Auth，改由应用自身的商城账号登录承担鉴权：
 
 | 项 | 值 |
 | --- | --- |
-| 用户名 | `xiaodan` |
-| 口令文件 | `/etc/nginx/.htpasswd-xiaodan-drama`（640 `root:www-data`） |
-| 口令备份 | `/etc/xiaodan-license/drama-basic-auth.txt`（600，**勿入 Git**） |
+| 登录页 | `https://www.xiaodukeji.online/ai_drama/login` |
+| 账号 | 小丹科研AI商城的手机号 + 密码 + 图形验证码 |
+| 会话 | HttpOnly Cookie `xd_mall_session`（签名后存服务端），商城 Bearer 令牌只留在服务端 |
+| 会话文件 | `<数据目录>/mall-sessions.json` 与 `mall-session.key`（均 0600） |
+| 退出 | `https://www.xiaodukeji.online/ai_drama/logout` |
 
-```sh
-NEW=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)
-printf 'xiaodan:%s\n' "$(openssl passwd -apr1 "$NEW")" > /etc/nginx/.htpasswd-xiaodan-drama
-chown root:www-data /etc/nginx/.htpasswd-xiaodan-drama && chmod 640 /etc/nginx/.htpasswd-xiaodan-drama
-printf '%s' "$NEW" > /etc/xiaodan-license/drama-basic-auth.txt && chmod 600 /etc/xiaodan-license/drama-basic-auth.txt
-systemctl reload nginx
-```
+- 未登录访问页面会 302 到登录页；`/api`、`/mcp`、`/a2a` 一律返回 401。
+- 登录成功后 `/api/keyShop/*` 自动切到商城账号维度：下单走商城 `/api/drama/recharge`，
+  订单与 Key 归属 `mall-<商城用户ID>`，可在商城「我的订单」里看到。
+- 服务端环境变量：`XIAODAN_PUBLIC_BASE=/ai_drama`（子路径跳转）、
+  `XIAODAN_MALL_BASE_URL=https://www.xiaodukeji.online`。
+- 登录请求会把客户端真实 IP 以 `X-Forwarded-For` 转给商城，否则商城按来源 IP 的
+  20 次/15 分钟限流会让所有用户共用一个桶。
+- 桌面端用同一套代码，`XIAODAN_PUBLIC_BASE` 留空即可；首次使用需联网登录。
+- 旧的 `/etc/nginx/.htpasswd-xiaodan-drama` 已不再用于 `/ai_drama/`。
 
 ### 重新构建与重启
 

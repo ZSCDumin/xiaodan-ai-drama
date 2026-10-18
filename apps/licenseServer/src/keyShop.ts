@@ -103,7 +103,8 @@ export function createKeyShop(store: LicenseStore) {
     }).immediate();
     return publicOrder(get(id));
   }
-  function reveal(id: string, licenseId: string) {
+  // 领取 Key：设备许可与商城账号两条入口共用同一套解密与审计逻辑。
+  function revealOwned(id: string, licenseId: string) {
     const row = get(id, licenseId);
     if (row.state === "refunded") throw Object.assign(new Error("订单已退款，Key 已作废"), { status: 409 });
     if (row.state !== "delivered" || !row.encryptedKey) throw Object.assign(new Error("Key 尚未交付"), { status: 409 });
@@ -112,6 +113,13 @@ export function createKeyShop(store: LicenseStore) {
     const apiKey = Buffer.concat([decipher.update(bytes.subarray(28)), decipher.final()]).toString("utf8");
     record(row.licenseId, `keyRevealed:${id}`);
     return { apiKey };
+  }
+  function reveal(id: string, licenseId: string) {
+    return revealOwned(id, licenseId);
+  }
+  // 商城用户在自己的账号下领取：订单归属为 mall-<商城用户ID>。
+  function mallReveal(mallUserId: string, id: string) {
+    return revealOwned(id, `mall-${mallUserId}`);
   }
   function ensureMallLicense(mallUserId: string) {
     const licenseId = `mall-${mallUserId}`;
@@ -137,5 +145,5 @@ export function createKeyShop(store: LicenseStore) {
   function mallList(mallUserId: string) {
     return list(`mall-${mallUserId}`);
   }
-  return { get, order, paid, deliver, redeliver, refund, reveal, mallOrder, mallStatus, mallList, list };
+  return { get, order, paid, deliver, redeliver, refund, reveal, mallReveal, mallOrder, mallStatus, mallList, list };
 }

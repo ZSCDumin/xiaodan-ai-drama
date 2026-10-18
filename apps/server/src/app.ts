@@ -105,6 +105,11 @@ export async function createApp({
   app.use(express.urlencoded({ extended: true, limit: "100mb" }));
   app.use("/api/desktop", desktopRequest);
 
+  // 小丹AI商城账号登录：先注册登录接口，再挂访问门槛。
+  const { registerMallAuth, requireMallSession } = await import("@/utils/mallAuth");
+  registerMallAuth(app);
+  app.use(requireMallSession);
+
   const { ensureLicense } = await import("@/utils/license");
   app.use(async (request, _response, next) => {
     if (request.method === "POST" && /^\/api\/(agent|singleAgent\/run|ai\/(generate|media\/generate)|providers\/debug\/run)$/i.test(request.path.replace(/\/+$/, ""))) await ensureLicense();
