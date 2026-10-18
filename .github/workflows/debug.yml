@@ -134,7 +134,7 @@ jobs:
           ref: ${{ matrix.target == 'macArm64' && github.sha || needs.prepare.outputs.commit }}
           persist-credentials: false
       - name: 校验签名来源
-        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
+        if: matrix.target == 'macArm64' && env.macCodesign == '1'
         env:
           buildCommit: ${{ needs.prepare.outputs.commit }}
         run: |
@@ -197,7 +197,7 @@ jobs:
           androidRelease: ${{ inputs.androidRelease && '1' || '0' }}
         run: bun run --cwd apps/mobile build
       - name: 准备 ARM 签名与公证凭据
-        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
+        if: matrix.target == 'macArm64' && env.macCodesign == '1'
         id: signing
         env:
           certificateBase64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
@@ -249,7 +249,7 @@ jobs:
           printf 'identity=%s\n' "$identity" >> "$GITHUB_OUTPUT"
           printf 'notarizationKeyPath=%s\n' "$notarizationKeyPath" >> "$GITHUB_OUTPUT"
       - name: 为 Apple 公证票据网络错误启用有限重试
-        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
+        if: matrix.target == 'macArm64' && env.macCodesign == '1'
         run: |
           bun -e '
           import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "@toonflow/file";
