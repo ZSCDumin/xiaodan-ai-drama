@@ -265,8 +265,31 @@ curl -sS -X POST https://www.xiaodukeji.online/license/v1/activate \
 | 应用端口 | `127.0.0.1:3010`（`TOONFLOW_PORT` 环境变量，默认 3000） |
 | 入口 | `build/server/index.js`，静态资源 `build/web` |
 | 数据目录 | `/home/codes/xiaodan-ai-drama/data` |
-| 本机隧道 | SSH 端口转发 `127.0.0.1:3010`，浏览器开 `http://localhost:3010` |
-| 对外入口 | `https://www.xiaodukeji.online:8080`（nginx `xiaodan-drama-external`，HTTPS + Basic Auth） |
+| 对外入口 | `https://www.xiaodukeji.online/ai_drama/`（nginx 子路径 + Basic Auth） |
+| 旧入口 | `https://www.xiaodukeji.online:8080` 现在 301 到 `/ai_drama/` |
+| 构建变量 | `XIAODAN_WEB_BASE=/ai_drama/`（不设则仍按根路径 `/` 构建） |
+
+### 子路径部署（`/ai_drama/`）
+
+应用是 SPA，前端有上百处以 `/api/` 开头的根路径，且静态资源默认在 `/assets/`。
+直接挂在子路径下会和商城同域的 `/api`、`/assets` 冲突，所以构建时必须设 `base`：
+
+```sh
+cd /home/codes/xiaodan-ai-drama
+XIAODAN_WEB_BASE=/ai_drama/ NODE_OPTIONS=--max-old-space-size=1400 \
+  nice -n 19 ionice -c3 bun run --cwd apps/web build
+```
+
+- `vite.config.ts` 读取 `XIAODAN_WEB_BASE` 作为 `base`；同时在转换阶段把源码里
+  写死的 `/api/...` 字面量统一前移成 `/ai_drama/api/...`（源码仍保持根路径写法）。
+- **不设该变量时 base 仍是 `/`**，桌面端与本地开发构建行为不变。
+- nginx 用 `location /ai_drama/ { proxy_pass http://127.0.0.1:3010/; }` 剥掉前缀，
+  应用本身仍然只认根路径。
+- 该 location **不能沿用商城的 CSP**（`default-src 'self'` 会挡掉编辑器的 `blob:` 媒体与
+  Worker）。nginx 里只要本 location 有 `add_header`，server 级的 `add_header` 就全部失效，
+  因此这里只补 `X-Content-Type-Options` 与 `Referrer-Policy`，不写 CSP。
+- 构建耗内存（16k+ 模块），务必带上 `--max-old-space-size` 与 `nice`，否则会把这台
+  2 核 3.5G 的机器压到假死（2026-10-17 已发生过一次）。
 
 ### 为什么必须加鉴权
 
@@ -277,7 +300,7 @@ curl -sS -X POST https://www.xiaodukeji.online/license/v1/activate \
 ### nginx 反代的头重写（关键）
 
 应用要求 `Host` 只允许 localhost，且 `Origin`／`Referer` 必须与 `Host` 同源。反代里把两者
-一起改写成 `localhost:3010` 即可同时满足，**无需修改应用代码**：
+一起改写成 `localhost:3010` 即可同时满足，**不用改应用的来源校验逻辑**：
 
 ```nginx
 proxy_set_header Host localhost:3010;
