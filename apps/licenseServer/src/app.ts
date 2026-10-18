@@ -6,7 +6,11 @@ import type { LicenseRow, LicenseStore } from "./store";
 import { createKeyShop } from "./keyShop";
 import { registerKeyRoutes } from "./keyRoutes";
 
-const activationSchema = credentialsSchema.extend({ code: z.string().regex(/^XD-[A-Za-z0-9_-]{32}$/) });
+const activationSchema = credentialsSchema.extend({
+  code: z.string().regex(/^XD-[A-Za-z0-9_-]{32}$/),
+  // 商城账号：首次激活时记录归属，之后同一个码只允许该账号继续激活。
+  mallUserId: z.string().regex(/^\d{1,16}$/).optional(),
+});
 
 export function createApp(store: LicenseStore) {
   const { db, record, lease } = store;
@@ -58,6 +62,12 @@ export function createApp(store: LicenseStore) {
     const result = db.transaction(() => {
       const license = db.query<LicenseRow, [string]>("SELECT * FROM licenses WHERE codeHash = ?").get(hash(input.code));
       if (!license) throw Object.assign(new Error("激活码无效"), { status: 403 });
+      // 一码一账号：已绑定的码只允许该账号继续激活；未登录（旧客户端）一律拒绝。
+      if (license.mallUserId) {
+        if (input.mallUserId !== license.mallUserId) throw Object.assign(new Error("该激活码已绑定商城账号，请使用绑定的账号登录后激活"), { status: 403 });
+      } else if (input.mallUserId) {
+        db.query("UPDATE licenses SET mallUserId = ? WHERE id = ?").run(input.mallUserId, license.id);
+      }
       const signed = lease(license, input.deviceId);
       const device = db.query<{ secretHash: string }, [string, string]>("SELECT secretHash FROM devices WHERE licenseId = ? AND deviceId = ?").get(license.id, input.deviceId);
       const secretHash = hash(input.deviceSecret);

@@ -43,7 +43,7 @@ if (command === "init") {
       console.log(JSON.stringify({ id, code, plan, expiresAt: new Date(expiresAt).toISOString(), maxDevices }, null, 2));
       console.log("激活码仅此次显示；请通过安全渠道交付。有效期从签发时起计算。");
     }
-    if (command === "list") console.log(JSON.stringify(db.query("SELECT id, plan, createdAt, expiresAt, maxDevices, revokedAt, revision, (SELECT count(*) FROM devices d WHERE d.licenseId = l.id) AS activeDevices FROM licenses l ORDER BY createdAt DESC LIMIT 200").all(), null, 2));
+    if (command === "list") console.log(JSON.stringify(db.query("SELECT id, plan, mallUserId, createdAt, expiresAt, maxDevices, revokedAt, revision, (SELECT count(*) FROM devices d WHERE d.licenseId = l.id) AS activeDevices FROM licenses l ORDER BY createdAt DESC LIMIT 200").all(), null, 2));
     if (["renew", "revoke", "devices", "releaseDevice"].includes(command!)) {
       const id = z.uuid().parse(args[0]);
       db.transaction(() => {

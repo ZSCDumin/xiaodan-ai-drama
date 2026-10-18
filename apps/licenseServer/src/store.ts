@@ -47,6 +47,9 @@ export function openStore() {
       createdAt INTEGER NOT NULL
     );
   `);
+  // 账号绑定（mallUserId）是后加字段：旧库就地补列，首次激活时回填。
+  const licenseColumns = new Set(db.query<{ name: string }, []>("PRAGMA table_info(licenses)").all().map(column => column.name));
+  if (!licenseColumns.has("mallUserId")) db.exec("ALTER TABLE licenses ADD COLUMN mallUserId TEXT");
   function record(licenseId: string, action: string) {
     db.query("INSERT INTO events (licenseId, action, createdAt) VALUES (?, ?, ?)").run(licenseId, action, Date.now());
   }
@@ -74,6 +77,8 @@ export interface LicenseRow {
   maxDevices: number;
   revokedAt: number | null;
   revision: number;
+  /** 首次激活时绑定的商城账号；为空表示尚未绑定（旧码或旧客户端）。 */
+  mallUserId: string | null;
 }
 export const credentialsSchema = z.strictObject({
   deviceId: z.uuid(),

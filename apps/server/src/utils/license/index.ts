@@ -99,11 +99,11 @@ async function requestLicense(action: string, body: unknown) {
   return result.data;
 }
 
-export function activateLicense(code: string) {
+export function activateLicense(code: string, mallUserId?: string) {
   return exclusive(async () => {
     const state = getState();
     if (state.lease || state.blocked) throw Object.assign(new Error("请先解除当前设备授权，再更换激活码；续期请使用刷新授权"), { status: 409 });
-    const lease = envelopeSchema.parse(await requestLicense("activate", { code, deviceId: state.deviceId, deviceSecret: state.deviceSecret }));
+    const lease = envelopeSchema.parse(await requestLicense("activate", { code, deviceId: state.deviceId, deviceSecret: state.deviceSecret, ...(mallUserId ? { mallUserId } : {}) }));
     decodeLease(lease, state.deviceId);
     const now = Date.now();
     conf.set("license", { ...state, lease, blocked: false, lastSeenAt: now, lastCheckedAt: now });
