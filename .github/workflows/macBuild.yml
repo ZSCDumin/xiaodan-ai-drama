@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, master, custom-xiaodan]
     paths:
+      - ".github/workflows/macBuild.yml"
+      - ".github/workflows/debug.yml"
+      - ".github/workflows/release.yml"
       - "apps/web/**"
       - "apps/server/**"
       - "apps/desktop/src/**"
