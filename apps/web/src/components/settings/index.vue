@@ -38,14 +38,13 @@
 <script setup lang="ts">
 import { defineAsyncComponent, shallowRef } from "vue";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
-import { isDesktop, isMobile } from "@/lib/platform";
+import { isMobile } from "@/lib/platform";
 import {
   IconPalette,
   IconSettings,
   IconPhotoVideo,
   IconBuildingStore,
   IconInfoCircle,
-  IconCode,
   IconShieldLock,
   IconPlugConnected,
   IconUserCog,
@@ -85,11 +84,7 @@ const settingsPanels = [
   { id: "privacy", label: "隐私", icon: IconShieldLock, component: defineAsyncComponent(() => import("./panels/privacy.vue")) },
   { id: "license", label: "软件授权", icon: IconShieldLock, component: defineAsyncComponent(() => import("./panels/license.vue")) },
   { id: "keyShop", label: "购买 API Key", icon: IconBuildingStore, component: defineAsyncComponent(() => import("./panels/keyShop.vue")) },
-  // 开发者选项只对桌面宿主开放：网页部署下隐藏入口（DevTools、供应商调试、
-  // 强制安装插件、缓存导入导出等都只用于本机开发）。
-  ...(isDesktop
-    ? [{ id: "developer", label: "开发者选项", icon: IconCode, component: defineAsyncComponent(() => import("./panels/developer/index.vue")) }]
-    : []),
+  // 开发者选项在所有平台都不再展示（DevTools、供应商调试、强制安装插件、缓存导入导出）。
   { id: "about", label: "关于", icon: IconInfoCircle, component: defineAsyncComponent(() => import("./panels/about.vue")) },
 ];
 const activePanel = shallowRef(settingsPanels[0]!);
