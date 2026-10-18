@@ -119,6 +119,19 @@ const loginSchema = z.object({
   captchaCode: z.string().min(1).max(8),
 });
 
+/**
+ * 商城按原样匹配手机号（库里存的是 `+86...`），用户习惯只填 11 位。
+ * 这里统一补全，避免"账号没错却提示手机号或密码错误"。
+ */
+function normalizePhone(value: string) {
+  const raw = String(value ?? "").replace(/[\s-]/g, "");
+  if (/^\+86\d{6,12}$/.test(raw)) return raw;
+  if (/^86\d{11}$/.test(raw)) return `+${raw}`;
+  if (/^1\d{10}$/.test(raw)) return `+86${raw}`;
+  if (/^\d{6,12}$/.test(raw)) return `+86${raw}`;
+  return raw;
+}
+
 function loginPage() {
   const base = PUBLIC_BASE;
   return `<!doctype html>
@@ -141,7 +154,7 @@ button:disabled{opacity:.6;cursor:default}
   <h1>登录小丹AI漫剧</h1>
   <p class="sub">使用小丹科研AI商城的手机号与密码登录</p>
   <label for="phone">手机号</label>
-  <input id="phone" name="phone" inputmode="tel" autocomplete="username" placeholder="+86 手机号" required/>
+  <input id="phone" name="phone" inputmode="tel" autocomplete="username" placeholder="手机号（+86 可省略）" required/>
   <label for="password">密码</label>
   <input id="password" name="password" type="password" autocomplete="current-password" required/>
   <label for="captchaCode">图形验证码</label>
@@ -202,7 +215,7 @@ export function registerMallAuth(app: Express) {
     response.set("Content-Type", "image/svg+xml").set("Cache-Control", "no-store").send(buffer);
   });
   app.post("/api/mall/auth/login", async (request, response) => {
-    const input = loginSchema.parse(request.body);
+    const input = loginSchema.parse({ ...request.body, phone: normalizePhone(request.body?.phone) });
     const { response: upstream, data } = await mallFetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
