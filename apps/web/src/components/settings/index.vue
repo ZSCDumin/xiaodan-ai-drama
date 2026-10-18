@@ -2,20 +2,26 @@
   <el-dialog v-model="visible" title="设置" width="min(1080px, calc(100vw - 32px))" alignCenter appendToBody>
     <div class="settings">
       <aside class="sidebar" aria-label="设置分类">
-        <template v-for="item in settingsPanels" :key="item.id">
-          <h3 v-if="item.groupLabel" class="settingsGroupLabel">{{ item.groupLabel }}</h3>
-          <button
-            class="settingsItem"
-            type="button"
-            :aria-label="item.id === 'about' && hasDesktopUpdate ? `${item.label}，有新版本可用` : item.label"
-            :aria-pressed="activePanel.id === item.id"
-            @click="activePanel = item">
-            <el-badge class="panelIcon" isDot :hidden="item.id !== 'about' || !hasDesktopUpdate">
-              <component :is="item.icon" :size="18" aria-hidden="true" />
-            </el-badge>
-            <span>{{ item.label }}</span>
-          </button>
-        </template>
+        <div class="panelList">
+          <template v-for="item in settingsPanels" :key="item.id">
+            <h3 v-if="item.groupLabel" class="settingsGroupLabel">{{ item.groupLabel }}</h3>
+            <button
+              class="settingsItem"
+              type="button"
+              :aria-label="item.id === 'about' && hasDesktopUpdate ? `${item.label}，有新版本可用` : item.label"
+              :aria-pressed="activePanel.id === item.id"
+              @click="activePanel = item">
+              <el-badge class="panelIcon" isDot :hidden="item.id !== 'about' || !hasDesktopUpdate">
+                <component :is="item.icon" :size="18" aria-hidden="true" />
+              </el-badge>
+              <span>{{ item.label }}</span>
+            </button>
+          </template>
+        </div>
+        <div v-if="account" class="accountBox">
+          <div class="accountName" :title="account.name">{{ account.name }}</div>
+          <el-button size="small" plain :loading="loggingOut" @click="logout">退出登录</el-button>
+        </div>
       </aside>
       <section class="content" :aria-label="activePanel.label" tabindex="0">
         <h2 class="panelTitle">{{ activePanel.label }}</h2>
@@ -36,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { defineAsyncComponent, shallowRef } from "vue";
+import { defineAsyncComponent, onMounted, ref, shallowRef } from "vue";
 import { hasDesktopUpdate } from "@/stores/desktopUpdate";
 import { isMobile } from "@/lib/platform";
 import {
@@ -88,6 +94,29 @@ const settingsPanels = [
   { id: "about", label: "关于", icon: IconInfoCircle, component: defineAsyncComponent(() => import("./panels/about.vue")) },
 ];
 const activePanel = shallowRef(settingsPanels[0]!);
+// 商城账号信息与退出登录：会话由服务端维护，前端只展示名称并按需退出。
+const account = ref<{ id: string; name: string; phone: string } | null>(null);
+const loggingOut = ref(false);
+async function loadAccount() {
+  try {
+    const response = await fetch("/api/mall/auth/me", { credentials: "same-origin" });
+    const body = await response.json().catch(() => null);
+    account.value = response.ok ? body?.data?.user ?? null : null;
+  } catch {
+    account.value = null;
+  }
+}
+async function logout() {
+  if (loggingOut.value) return;
+  loggingOut.value = true;
+  try {
+    await fetch("/api/mall/auth/logout", { method: "POST", credentials: "same-origin" });
+  } catch {
+    // 网络失败也继续跳登录页，服务端会按未登录处理。
+  }
+  location.href = "login";
+}
+onMounted(loadAccount);
 const visible = defineModel<boolean>({ default: false });
 defineExpose({
   openLicense() { activePanel.value = settingsPanels.find(item => item.id === "license")!; visible.value = true; },
@@ -104,8 +133,34 @@ defineExpose({
 
   .sidebar {
     min-height: 0;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     padding: 2px;
+
+    .panelList {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .accountBox {
+      flex: none;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 10px 10px 2px;
+      border-top: 1px solid var(--el-border-color-lighter);
+    }
+
+    .accountName {
+      overflow: hidden;
+      color: var(--el-text-color-secondary);
+      font-size: 12px;
+      line-height: 1.4;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .settingsGroupLabel {
       margin: 14px 12px 6px;
