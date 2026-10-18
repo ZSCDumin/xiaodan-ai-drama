@@ -124,7 +124,9 @@ jobs:
     env:
       appVersion: ${{ needs.prepare.outputs.version }}
       releaseMode: ${{ inputs.generatePatch && '--auto' || '--initial' }}
-      macCodesign: ${{ matrix.target == 'macArm64' && '1' || '0' }}
+      # 只有配置了签名证书才走签名/公证；否则出未签名包，
+      # 避免因为缺少 Apple 凭据让整条发布失败（其余三个平台本来就不签名）。
+      macCodesign: ${{ matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != '' && '1' || '0' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -132,7 +134,7 @@ jobs:
           ref: ${{ matrix.target == 'macArm64' && github.sha || needs.prepare.outputs.commit }}
           persist-credentials: false
       - name: 校验签名来源
-        if: matrix.target == 'macArm64'
+        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
         env:
           buildCommit: ${{ needs.prepare.outputs.commit }}
         run: |
@@ -195,7 +197,7 @@ jobs:
           androidRelease: ${{ inputs.androidRelease && '1' || '0' }}
         run: bun run --cwd apps/mobile build
       - name: 准备 ARM 签名与公证凭据
-        if: matrix.target == 'macArm64'
+        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
         id: signing
         env:
           certificateBase64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
@@ -247,7 +249,7 @@ jobs:
           printf 'identity=%s\n' "$identity" >> "$GITHUB_OUTPUT"
           printf 'notarizationKeyPath=%s\n' "$notarizationKeyPath" >> "$GITHUB_OUTPUT"
       - name: 为 Apple 公证票据网络错误启用有限重试
-        if: matrix.target == 'macArm64'
+        if: matrix.target == 'macArm64' && secrets.MACOS_CERTIFICATE_BASE64 != ''
         run: |
           bun -e '
           import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "@toonflow/file";
