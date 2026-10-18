@@ -6,7 +6,7 @@ export default {
   app: {
     name: "xiaodan",
     identifier: "local.xiaodan.aidrama.desktop",
-    version: process.env.appVersion ?? "2.0.9",
+    version: process.env.appVersion ?? "2.0.10",
     urlSchemes: ["toonflow"],
   },
   build: {

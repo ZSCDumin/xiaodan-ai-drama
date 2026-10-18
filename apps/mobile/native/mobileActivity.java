@@ -3,6 +3,7 @@ package com.toonflow.mobile;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.pm.ActivityInfo;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -361,6 +362,12 @@ public class mobileActivity extends Activity {
   private void pageFinished(String url) {
     if (stopping || failed || url == null || !isLocalOrigin(Uri.parse(url))) return;
     Uri page = Uri.parse(url);
+    if (page.getQueryParameter("probe") == null && page.getQueryParameter("token") == null) {
+      int orientation = "/login".equals(page.getPath()) ? ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        : "/".equals(page.getPath()) ? ActivityInfo.SCREEN_ORIENTATION_USER : -1;
+      // 登录固定竖屏；工作台遵循用户的自动旋转设置。配置变更不会重启本地服务。
+      if (orientation != -1 && getRequestedOrientation() != orientation) setRequestedOrientation(orientation);
+    }
     if ("page".equals(browserStage)) {
       // 首次启动会由账号门槛跳转到同源登录页；登录页就绪也必须移除启动遮罩。
       if (!("/".equals(page.getPath()) || "/login".equals(page.getPath()))
