@@ -45,8 +45,8 @@ export default {
     },
     mac: {
       icons: "packages/assets/logo.iconset",
-      // ACT: CI 为 ARM 同时开启签名与公证；本地未配置凭据时仍可构建测试包。
-      codesign: process.env.macCodesign === "1",
+      // ACT: ARM 始终封存签名；无正式身份时由构建入口选择 ad hoc，公证仍要求 Apple 凭据。
+      codesign: startupTarget === "macArm64" || process.env.macCodesign === "1",
       notarize: process.env.macCodesign === "1",
     },
   },

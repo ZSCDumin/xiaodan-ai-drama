@@ -10,6 +10,9 @@ if (process.argv.length !== 3 || !["build", "dev", "typecheck", "package"].inclu
 }
 const isMac = process.platform === "darwin";
 const isIntelMac = isMac && process.arch === "x64";
+// ACT: ARM 在 SDK 写完 version.json 后由原生签名流程封存；无 Apple 凭据时用本地签名。
+// Intel 旧 SDK 暂不支持重签，继续使用独立配置。
+if (isMac && !isIntelMac && process.env.macCodesign !== "1") process.env.ELECTROBUN_DEVELOPER_ID = "-";
 // ACT: typecheck 只读取当前源码和已有 SDK 文件，不安装依赖或生成文件。
 if (mode === "typecheck") {
   await $`${process.execPath} run tsc --project ${isIntelMac ? "compat/macIntel/tsconfig.json" : "apps/desktop/tsconfig.json"}`.cwd(projectDir);
