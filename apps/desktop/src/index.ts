@@ -199,7 +199,7 @@ async function start() {
         const [path] = await Utils.openFileDialog({ canChooseFiles: false, canChooseDirectory: true, allowsMultipleSelection: false });
         return path ?? null;
       },
-      async ready(failed = false) {
+      async ready(failed = false, loginPage = false) {
         if (isClosing) return;
         if (!isShowing) {
           if (splash) {
@@ -213,6 +213,8 @@ async function start() {
           // ACT: 安装器已完成注册；更新后的修复仅首次展示时执行，不阻塞主窗口。
           void restoreInstallRegistration(installDirectory);
         }
+        // 登录页只负责显示窗口；业务页就绪后再确认更新启动并投递插件安装请求。
+        if (loginPage) return;
         if (failed && !connection.remote) {
           if (process.platform === "win32") confirmWindowsUpdateStartup(PATHS.RESOURCES_FOLDER, true);
           else await (Updater as DesktopRuntime["updater"]).confirmStartup?.(true);

@@ -44,7 +44,7 @@ export interface DesktopRuntime {
   selectDirectory(): Promise<string | null>;
   selectSaveFile(fileName: string): Promise<string | null>;
   saveFile(token: string, content: Uint8Array): Promise<boolean>;
-  ready(failed?: boolean): Promise<void>;
+  ready(failed?: boolean, loginPage?: boolean): Promise<void>;
   openDevTools(): void;
   updater: {
     getLocalInfo(): Promise<{ version: string; channel: string; hash: string; baseUrl: string }>;

@@ -132,7 +132,7 @@ function normalizePhone(value: string) {
   return raw;
 }
 
-function loginPage() {
+function loginPage(desktop = false) {
   const base = PUBLIC_BASE;
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -169,6 +169,12 @@ button:disabled{opacity:.6;cursor:default}
 (function(){
   var base=${JSON.stringify(base)};
   var captchaId="",image=document.getElementById("captchaImage"),err=document.getElementById("err"),submit=document.getElementById("submit"),form=document.getElementById("form");
+  // 登录页不加载 Vue，需要单独通知原生宿主展示窗口。
+  if (${desktop}) window.addEventListener("load",function(){
+    fetch(base+"/api/desktop/ready",{method:"POST",headers:{"Content-Type":"application/json","x-toonflow-desktop":"1"},body:JSON.stringify({loginPage:true})})
+      .then(function(response){if(!response.ok)throw new Error("显示登录窗口失败（"+response.status+"）")})
+      .catch(function(error){err.textContent=error.message});
+  },{once:true});
   async function refresh(){
     try{
       var r=await fetch(base+"/api/mall/auth/captcha",{credentials:"same-origin"});
@@ -199,8 +205,8 @@ button:disabled{opacity:.6;cursor:default}
 }
 
 export function registerMallAuth(app: Express) {
-  app.get("/login", (_request, response) => {
-    response.set("Cache-Control", "no-store").type("html").send(loginPage());
+  app.get("/login", (request, response) => {
+    response.set("Cache-Control", "no-store").type("html").send(loginPage(Boolean(request.app.locals.desktop)));
   });
   app.get("/api/mall/auth/captcha", async (request, response) => {
     const { response: upstream, data } = await mallFetch("/api/auth/captcha", { clientIp: clientAddress(request) });
@@ -269,6 +275,8 @@ export function requireMallSession(request: Request, response: Response, next: N
     return next();
   }
   const path = request.path;
+  // 登录前只允许展示桌面窗口；此路径仍受 desktopRequest 的同源与宿主校验保护。
+  if (request.method === "POST" && path === "/api/desktop/ready" && request.app.locals.desktop) return next();
   if (path === "/login" || path === "/logout" || path === "/health" || path.startsWith("/api/mall/auth/")) return next();
   if (path.startsWith("/api/") || path.startsWith("/mcp") || path.startsWith("/a2a")) {
     return response.status(401).json({ code: 401, data: null, message: "请先登录小丹AI商城账号" });
