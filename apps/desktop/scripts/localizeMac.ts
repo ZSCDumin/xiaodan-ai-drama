@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "@toonflow/file";
 import { join } from "node:path";
+import { $ } from "bun";
 
 if (process.env.ELECTROBUN_OS === "macos") {
   const buildDir = process.env.ELECTROBUN_BUILD_DIR;
@@ -38,4 +39,10 @@ if (process.env.ELECTROBUN_OS === "macos") {
   writeFileSync(join(resourceDir, "InfoPlist.strings"),
     `CFBundleName = ${JSON.stringify(displayName)};\nCFBundleDisplayName = ${JSON.stringify(displayName)};\n`);
   console.log(`已设置 macOS 简体中文本地化：${bundlePath}`);
+  if (process.env.macCodesign !== "1") {
+    // ACT: 本地化完成后封存资源；链接器临时签名不能验证完整 .app。
+    // 两个钩子分别覆盖实际应用和自解压安装器，不替代 Developer ID 与公证。
+    await $`/usr/bin/codesign --force --deep --sign - --preserve-metadata=entitlements ${bundlePath}`;
+    await $`/usr/bin/codesign --verify --deep --strict --verbose=2 ${bundlePath}`;
+  }
 }
