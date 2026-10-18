@@ -15,7 +15,7 @@ const MALL_BASE = String(process.env.XIAODAN_MALL_BASE_URL ?? "https://www.xiaod
 // 对外路径前缀：网页部署是 /ai_drama，桌面端与本地是空串。
 const PUBLIC_BASE = String(process.env.XIAODAN_PUBLIC_BASE ?? "").replace(/\/+$/, "");
 const COOKIE_NAME = "xd_mall_session";
-const SESSION_TTL_MS = 7 * 24 * 3600 * 1000;
+const SESSION_TTL_MS = 30 * 24 * 3600 * 1000;
 
 const dataDirectory = resolve(process.env.TOONFLOW_DATA_DIR ?? join(process.cwd(), "data"));
 mkdirSync(dataDirectory, { recursive: true, mode: 0o700 });
@@ -68,7 +68,7 @@ function currentSession(request: Request): MallSession | null {
   if (!session) return null;
   const now = Date.now();
   if (session.exp <= now) { sessions.delete(id); persistSessions(); return null; }
-  // 滑动续期：剩余不足一半时续满，桌面端长期离线使用也不会在第 7 天被强制下线。
+  // 滑动续期：剩余不足一半时续满，桌面端长期离线使用也不会在第 30 天被强制下线。
   // 写入频率约为每 3.5 天一次，不影响请求路径。
   if (session.exp - now < SESSION_TTL_MS / 2) {
     session.exp = now + SESSION_TTL_MS;
