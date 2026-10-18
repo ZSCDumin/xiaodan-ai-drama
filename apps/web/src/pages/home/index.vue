@@ -417,10 +417,12 @@ async function createProject(fromPrompt = true) {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 72px;
-    padding: 0 clamp(20px, 4vw, 56px);
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 16px clamp(20px, 4vw, 56px);
 
-    .headerActions { display: flex; align-items: center; gap: 12px; }
+    .headerActions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; :deep(.el-button) { margin: 0; } }
 
     a {
       text-decoration: none;

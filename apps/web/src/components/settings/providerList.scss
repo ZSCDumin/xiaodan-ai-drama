@@ -1,4 +1,5 @@
 .providerList {
+  min-width: 0;
   .itemList {
     .providerItem {
       margin-bottom: 12px;
@@ -90,5 +91,9 @@
       width: 100%;
       margin-left: 0;
     }
+  }
+
+  @container settingsContent (max-width: 440px) {
+    .providerActions { grid-template-columns: minmax(0, 1fr); }
   }
 }

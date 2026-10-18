@@ -89,13 +89,16 @@ watch(() => props.visible, visible => { apiKey.value = ""; if (visible) void loa
 
 <style scoped lang="scss">
 .keyShopPanel {
-  display: grid; gap: 20px;
-  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  display: grid; gap: 20px; min-width: 0;
+  > section { min-width: 0; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
   h3, h4 { margin: 0; }
-  p { color: var(--el-text-color-secondary); font-size: 13px; line-height: 1.8; margin: 0; }
+  p { color: var(--el-text-color-secondary); font-size: 13px; line-height: 1.8; margin: 0; overflow-wrap: anywhere; }
   .packageCard, .keyReveal { border: 1px solid var(--el-border-color-light); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; :deep(.el-button) { margin: 0; } }
   .checkout { display: grid; justify-items: center; gap: 12px; text-align: center; }
   section > h4 { margin-bottom: 12px; }
+  .checkout :deep(.t-qrcode) { max-width: 100%; }
+  .checkout :deep(canvas), .checkout :deep(svg) { max-width: 100%; height: auto !important; }
 }
 </style>

@@ -80,7 +80,7 @@ async function release() {
 
 <style scoped lang="scss">
 .licensePanel {
-  display: grid; gap: 20px; max-width: 760px;
+  display: grid; gap: 20px; max-width: 760px; min-width: 0;
   .statusCard { padding: 20px; border: 1px solid var(--el-border-color-light); border-radius: var(--el-border-radius-base); }
   .statusHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   h3 { margin: 0; font-size: 16px; }
@@ -92,5 +92,8 @@ async function release() {
   .actions { display: flex; gap: 12px; flex-wrap: wrap; :deep(.el-button) { margin: 0; } }
   .result { margin: 0; color: var(--el-color-success); &.failed { color: var(--el-color-danger); } }
   .notes { border-top: 1px solid var(--el-border-color-light); padding-top: 8px; }
+  @container settingsContent (max-width: 360px) {
+    dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  }
 }
 </style>

@@ -46,6 +46,17 @@ body,
   box-sizing: border-box;
 }
 
+@media (max-width: 900px), (max-height: 500px) {
+  .el-dialog {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .el-message-box { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto; }
+}
+
 .stream-markdown [data-stream-markdown="tooltip"] {
   z-index: var(--markdown-tooltip-z-index);
 }

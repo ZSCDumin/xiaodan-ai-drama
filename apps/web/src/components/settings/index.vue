@@ -214,6 +214,7 @@ defineExpose({
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
     padding: 0 20px;
     overflow: hidden;
 
@@ -226,7 +227,9 @@ defineExpose({
     .panelContent {
       flex: 1;
       min-height: 0;
-      overflow-x: hidden;
+      min-width: 0;
+      container: settingsContent / inline-size;
+      overflow-x: auto;
       overflow-y: auto;
       overscroll-behavior: contain;
       padding-left: 5px;
@@ -261,6 +264,12 @@ defineExpose({
     .content {
       padding: 0 8px 0 16px;
     }
+  }
+
+  @media (max-height: 500px) {
+    height: calc(100dvh - 100px);
+    .content .panelTitle { margin-bottom: 10px; }
+    .content .panelContent { padding-bottom: 16px; }
   }
 }
 </style>
