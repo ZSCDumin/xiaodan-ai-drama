@@ -362,7 +362,9 @@ public class mobileActivity extends Activity {
     if (stopping || failed || url == null || !isLocalOrigin(Uri.parse(url))) return;
     Uri page = Uri.parse(url);
     if ("page".equals(browserStage)) {
-      if (!"/".equals(page.getPath()) || page.getQueryParameter("probe") != null || page.getQueryParameter("token") != null) return;
+      // 首次启动会由账号门槛跳转到同源登录页；登录页就绪也必须移除启动遮罩。
+      if (!("/".equals(page.getPath()) || "/login".equals(page.getPath()))
+        || page.getQueryParameter("probe") != null || page.getQueryParameter("token") != null) return;
       browserStage = "ready";
       mainHandler.removeCallbacks(browserTimeout);
       if (geckoSession == null) webView.clearHistory();

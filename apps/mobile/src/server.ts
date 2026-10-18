@@ -54,10 +54,11 @@ app.use((request, response, next) => {
 
 app.get("/", (request, response, next) => {
   if (request.query.probe !== "1") {
-    if (connection.remote && request.query.remote !== "1") {
+    // 登录页提交后返回根路径，重新附带原生手机标记，避免进入普通网页模式。
+    if (request.query.mobile !== "1" || (connection.remote && request.query.remote !== "1")) {
       const query = new URLSearchParams(request.originalUrl.split("?")[1]);
       query.set("mobile", "1");
-      query.set("remote", "1");
+      if (connection.remote) query.set("remote", "1");
       return void response.redirect(`/?${query}`);
     }
     return next();
