@@ -82,7 +82,7 @@ jobs:
           releaseVersion: ${{ needs.build.outputs.version }}
         run: |
           node --input-type=module <<'JS'
-          import { readdirSync, writeFileSync } from "node:fs";
+          import { readdirSync, renameSync, writeFileSync } from "node:fs";
 
           const files = readdirSync("artifacts");
           const version = process.env.releaseVersion;
@@ -91,7 +91,9 @@ jobs:
             if (names.length !== 1) throw new Error(`${label} 安装包数量应为 1，实际为 ${names.length}`);
             return names[0];
           };
-          const windows = findInstaller("Windows", name => name === `小丹AI漫剧-${version}-Setup.exe`);
+          const windowsSource = findInstaller("Windows", name => name === `小丹AI漫剧-${version}-Setup.exe`);
+          const windows = `xiaodan-ai-drama-${version}-windows-x64-setup.exe`;
+          renameSync(`artifacts/${windowsSource}`, `artifacts/${windows}`);
           const macArm = findInstaller("macOS ARM64", name => name.endsWith(".dmg") && name.includes("arm64"));
           const macIntel = findInstaller("macOS x64", name => name.endsWith(".dmg") && name.includes("x64"));
           const android = findInstaller("Android ARM64", name => name === `xiaodan-ai-drama-${version}-android-arm64.apk`);
@@ -134,10 +136,28 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: artifacts/*
+      - name: 检查更新托管配置
+        id: updateHosting
+        env:
+          uploadKey: ${{ secrets.TFROUTER_UPLOAD_KEY }}
+          uploadPutUrl: ${{ secrets.TFROUTER_UPLOAD_PUT_URL }}
+          uploadGetPutUrl: ${{ secrets.TFROUTER_UPLOAD_GET_PUT_URL }}
+        run: |
+          if [[ -z "$uploadKey$uploadPutUrl$uploadGetPutUrl" ]]; then
+            echo '未配置更新托管，安装包已通过 GitHub Release 发布。'
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          else
+            : "${uploadKey:?请配置 TFROUTER_UPLOAD_KEY Secret}"
+            : "${uploadPutUrl:?请配置 TFROUTER_UPLOAD_PUT_URL Secret}"
+            : "${uploadGetPutUrl:?请配置 TFROUTER_UPLOAD_GET_PUT_URL Secret}"
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          fi
       - uses: oven-sh/setup-bun@v2
+        if: steps.updateHosting.outputs.enabled == 'true'
         with:
           bun-version: 1.3.14
       - name: 上传到更新托管网站
+        if: steps.updateHosting.outputs.enabled == 'true'
         timeout-minutes: 60
         env:
           releaseVersion: ${{ needs.build.outputs.version }}
@@ -174,7 +194,7 @@ jobs:
           const plans = await Promise.all(targets.map(async target => {
             const prefix = `stable-${target.platform}-${target.arch}-`;
             const installers = names.filter(name => target.platform === "win"
-              ? name === `小丹AI漫剧-${version}-Setup.exe`
+              ? name === `xiaodan-ai-drama-${version}-windows-x64-setup.exe`
               : name.endsWith(".dmg") && name.includes(target.arch));
             if (installers.length !== 1) throw new Error(`${prefix}安装包数量应为 1，实际为 ${installers.length}`);
             const manifestName = `${prefix}update.json`;
