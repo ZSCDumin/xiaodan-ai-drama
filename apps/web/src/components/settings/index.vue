@@ -247,6 +247,21 @@ defineExpose({
     grid-template-columns: 44px minmax(0, 1fr);
 
     .sidebar {
+      .accountBox {
+        min-width: 0;
+        padding: 8px 0 0;
+
+        .el-button {
+          width: 100%;
+          height: auto;
+          min-height: 32px;
+          padding: 6px 2px;
+          white-space: normal;
+
+          :deep(span) { white-space: normal; line-height: 1.4; }
+        }
+      }
+
       .settingsGroupLabel {
         margin: 12px 0 6px;
         text-align: center;
