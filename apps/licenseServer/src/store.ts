@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, sign } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, randomBytes, randomUUID, sign } from "node:crypto";
 import { resolve, join } from "node:path";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "@toonflow/file";
 import { z } from "zod";
@@ -64,7 +64,18 @@ export function openStore() {
     })).toString("base64url");
     return { keyId, payload, signature: sign(null, Buffer.from(payload), privateKey).toString("base64url") };
   }
-  return { db, publicPem, keyId, record, lease };
+  // 供商城购买后自动签发：按天数/设备数/方案生成激活码，可预绑定商城账号。
+  function issueLicense(input: { days: number; maxDevices: number; plan: string; mallUserId?: string }) {
+    const id = randomUUID(), code = newCode(), now = Date.now();
+    const expiresAt = now + input.days * 86400000;
+    db.transaction(() => {
+      db.query("INSERT INTO licenses (id, codeHash, plan, createdAt, expiresAt, maxDevices, mallUserId) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run(id, hash(code), input.plan, now, expiresAt, input.maxDevices, input.mallUserId ?? null);
+      record(id, "issue");
+    }).immediate();
+    return { id, code, plan: input.plan, expiresAt, maxDevices: input.maxDevices, mallUserId: input.mallUserId ?? null };
+  }
+  return { db, publicPem, keyId, record, lease, issueLicense };
 }
 
 export type LicenseStore = ReturnType<typeof openStore>;

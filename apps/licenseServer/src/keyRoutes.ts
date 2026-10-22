@@ -81,6 +81,20 @@ export function registerKeyRoutes(app: Express, store: LicenseStore, shop: Retur
     const input = z.strictObject({ mallUserId: z.string().regex(/^\d{1,16}$/), orderId: z.string().regex(/^[a-f0-9]{32}$/) }).parse(req.body);
     res.json({ code: 200, data: shop.mallReveal(input.mallUserId, input.orderId), message: "成功" });
   });
+  // 商城购买后自动签发激活码：仅内部服务可调用，可预绑定商城账号。
+  const issueSchema = z.strictObject({
+    mallUserId: z.string().regex(/^\d{1,16}$/),
+    days: z.number().int().min(1).max(3650).default(30),
+    maxDevices: z.number().int().min(1).max(100).default(2),
+    plan: z.string().regex(/^[a-zA-Z0-9]{1,32}$/).default("standard"),
+  });
+  app.post("/v1/licenses/issue", (req, res) => {
+    if (!internalCallAllowed(req)) {
+      res.status(403).json({ code: 403, data: null, message: "仅允许内部服务调用" }); return;
+    }
+    const input = issueSchema.parse(req.body);
+    res.json({ code: 200, data: store.issueLicense(input), message: "成功" });
+  });
   app.post("/v1/payments/mall/notify", (req, res) => {
     const raw = callbackBodies.get(req);
     if (!raw) { res.status(400).json({ code: 400, data: null, message: "请求体缺失" }); return; }
